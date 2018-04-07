@@ -1,0 +1,785 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>mainWindow</class>
+ <widget class="QMainWindow" name="mainWindow">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>857</width>
+    <height>584</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>CSCI3130 grader</string>
+  </property>
+  <property name="accessibleName">
+   <string/>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_7">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_12">
+      <item>
+       <widget class="BetterLineEdit" name="input_file_location">
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="placeholderText">
+         <string>Double click for path selection or paste|type path here</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="filename_lineEdit">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="but_file_open">
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>Open</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="but_begin">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>Begin</string>
+        </property>
+        <property name="checkable">
+         <bool>false</bool>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
+        <property name="default">
+         <bool>false</bool>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_7">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QLabel" name="label_from">
+            <property name="text">
+             <string>From</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDateTimeEdit" name="dateTimeEdit_from">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="wrapping">
+             <bool>false</bool>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="accelerated">
+             <bool>false</bool>
+            </property>
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QLabel" name="label_submitted">
+            <property name="text">
+             <string>Submitted</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDateTimeEdit" name="dateTimeEdit_submitted">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="wrapping">
+             <bool>false</bool>
+            </property>
+            <property name="frame">
+             <bool>true</bool>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="keyboardTracking">
+             <bool>false</bool>
+            </property>
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_to">
+            <property name="text">
+             <string>To</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDateTimeEdit" name="dateTimeEdit_to">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_8">
+          <item>
+           <widget class="QLineEdit" name="input_current_id">
+            <property name="maximumSize">
+             <size>
+              <width>60</width>
+              <height>40</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_current_id">
+            <property name="text">
+             <string>current id</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_9">
+          <item>
+           <widget class="QLineEdit" name="input_attempt">
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>40</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Fixed</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_attempt">
+            <property name="text">
+             <string>attempt</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLineEdit" name="input_max_pos_grade">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>40</height>
+             </size>
+            </property>
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_max_pos">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
+            </property>
+            <property name="text">
+             <string>lab max grade</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLineEdit" name="input_subtract">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>40</height>
+             </size>
+            </property>
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_subtr">
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
+            </property>
+            <property name="text">
+             <string>subtract</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="QLineEdit" name="input_final_grade">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>40</height>
+             </size>
+            </property>
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_final">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="locale">
+             <locale language="English" country="UnitedStates"/>
+            </property>
+            <property name="text">
+             <string>final grade</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QPushButton" name="but_regrade">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="locale">
+           <locale language="English" country="UnitedStates"/>
+          </property>
+          <property name="text">
+           <string>GRADE</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkB_input_pin_status">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="locale">
+           <locale language="English" country="UnitedStates"/>
+          </property>
+          <property name="text">
+           <string>Input direction</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkB_output_pin_status">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="locale">
+           <locale language="English" country="UnitedStates"/>
+          </property>
+          <property name="text">
+           <string>Output direction</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_10">
+      <property name="spacing">
+       <number>65</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="but_prev">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>200</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>prev</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkB_wrong">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>75</width>
+          <height>20</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>75</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>WRONG</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="but_reset">
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>20</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Reset</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="but_next">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>200</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>next</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QComboBox" name="popular_answers">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="locale">
+       <locale language="English" country="UnitedStates"/>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentText">
+       <string/>
+      </property>
+      <item>
+       <property name="text">
+        <string/>
+       </property>
+      </item>
+     </widget>
+    </item>
+    <item>
+     <widget class="QTabWidget" name="tabs_for_log_and_resp">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>770</width>
+        <height>30</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>20000</width>
+        <height>3700</height>
+       </size>
+      </property>
+      <property name="locale">
+       <locale language="English" country="UnitedStates"/>
+      </property>
+      <property name="tabShape">
+       <enum>QTabWidget::Rounded</enum>
+      </property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="response_tab">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>180</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>300</height>
+        </size>
+       </property>
+       <attribute name="title">
+        <string>Response</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_9">
+        <item>
+         <widget class="QSplitter" name="splitter">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <widget class="QPlainTextEdit" name="input_response_browser">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="placeholderText">
+            <string>Auto answer</string>
+           </property>
+          </widget>
+          <widget class="BetterPlainTextEdit" name="input_response_browser_user">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
+           <property name="placeholderText">
+            <string>User comment</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_prev_resp">
+       <attribute name="title">
+        <string>Previous Response</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <widget class="QPlainTextEdit" name="input_prev_response">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_message_to_all">
+       <attribute name="title">
+        <string>Message to all</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_8">
+        <item>
+         <widget class="QPlainTextEdit" name="input_message_to_all">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="log_tab">
+       <attribute name="title">
+        <string>Log</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <widget class="QTextBrowser" name="input_log_browser">
+          <property name="locale">
+           <locale language="English" country="UnitedStates"/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_11">
+      <item>
+       <widget class="QPushButton" name="but_save_response">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>save responce</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="check_autosave">
+        <property name="text">
+         <string>autosave</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="set_style_checkbox">
+        <property name="text">
+         <string>style</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="toolButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Settings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="but_save_all">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="text">
+         <string>save all</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="new_window_but">
+        <property name="text">
+         <string>Create due dates</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="but_create_report">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Create reports</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="progressBar">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
+      <property name="locale">
+       <locale language="English" country="UnitedStates"/>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
+      <property name="textVisible">
+       <bool>true</bool>
+      </property>
+      <property name="invertedAppearance">
+       <bool>false</bool>
+      </property>
+      <property name="format">
+       <string>%v/%m (%p%)</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>BetterLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header location="global">qt_class_improvements</header>
+  </customwidget>
+  <customwidget>
+   <class>BetterPlainTextEdit</class>
+   <extends>QPlainTextEdit</extends>
+   <header location="global">qt_class_improvements</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

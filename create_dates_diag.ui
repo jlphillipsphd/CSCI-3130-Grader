@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Create_dates_dialog</class>
+ <widget class="QDialog" name="Create_dates_dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>589</width>
+    <height>250</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>500</width>
+    <height>250</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1000</width>
+    <height>300</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="BetterLineEdit" name="lineEdit">
+       <property name="focusPolicy">
+        <enum>Qt::StrongFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Tripple for file dialog</string>
+       </property>
+       <property name="statusTip">
+        <string/>
+       </property>
+       <property name="whatsThis">
+        <string/>
+       </property>
+       <property name="accessibleName">
+        <string/>
+       </property>
+       <property name="accessibleDescription">
+        <string/>
+       </property>
+       <property name="inputMask">
+        <string/>
+       </property>
+       <property name="readOnly">
+        <bool>false</bool>
+       </property>
+       <property name="placeholderText">
+        <string>DoubleClick to select path</string>
+       </property>
+       <property name="cursorMoveStyle">
+        <enum>Qt::LogicalMoveStyle</enum>
+       </property>
+       <property name="clearButtonEnabled">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0">
+     <item>
+      <widget class="QDateTimeEdit" name="init_subm_date_time">
+       <property name="maximumSize">
+        <size>
+         <width>150</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="init_label">
+       <property name="text">
+        <string>Submission date</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QDateTimeEdit" name="first_subm_date_time">
+       <property name="maximumSize">
+        <size>
+         <width>150</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="first_label">
+       <property name="text">
+        <string>1st resubmission</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QDateTimeEdit" name="second_subm_date_time">
+       <property name="maximumSize">
+        <size>
+         <width>150</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="second_label">
+       <property name="text">
+        <string>2nd resubmission</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QDateTimeEdit" name="third_subm_date_time">
+       <property name="maximumSize">
+        <size>
+         <width>150</width>
+         <height>35</height>
+        </size>
+       </property>
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="third_label">
+       <property name="text">
+        <string>3rd resubmission</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>40</height>
+      </size>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Abort|QDialogButtonBox::SaveAll</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>BetterLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header location="global">qt_class_improvements</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>init_subm_date_time</tabstop>
+  <tabstop>first_subm_date_time</tabstop>
+  <tabstop>second_subm_date_time</tabstop>
+  <tabstop>third_subm_date_time</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>Create_dates_dialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>Create_dates_dialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
