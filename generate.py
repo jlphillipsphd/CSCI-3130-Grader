@@ -106,7 +106,7 @@ def generate_answers(resubmit_num, dir_name, lab_type, lab_num):
     :return:
     """
     students = {}
-    if students:
+    if not students:
         with open('students_list.txt', 'r') as stud_list_file:
             temp_arr = stud_list_file.readlines()
             for line in temp_arr:

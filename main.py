@@ -192,12 +192,12 @@ class Grader:
 
         if self.lab_type == 'Closed':
             self.lab_max_grade = 10
-        else:
+        else:  # Open
             self.lab_max_grade = 20
 
         self.time = int(due_file[6:])
 
-        dirs.sort()
+        dirs.sort()  # sort list of submitted labs
         if dirs[0] == 'Answers':
             dirs.pop(0)
 
