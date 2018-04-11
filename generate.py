@@ -149,10 +149,10 @@ def generate_answers(resubmit_num, dir_name, lab_type, lab_num):
 
     dirs = os.walk(dir_name).__next__()[1]
 
-    with open('../answer.top', 'r') as partial_html:
+    with open('./answer.top', 'r') as partial_html:
         top_part = partial_html.readlines()
 
-    with open('../answer.bottom', 'r') as partial_html:
+    with open('./answer.bottom', 'r') as partial_html:
         bot_part = partial_html.readlines()
 
     grades = list()
