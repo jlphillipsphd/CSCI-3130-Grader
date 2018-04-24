@@ -10,6 +10,7 @@ import subprocess
 # import signal
 from pathlib import Path
 import numpy as np
+import sqlite3 as lite
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QDateTime, QLocale
@@ -40,6 +41,25 @@ QProgressBar::chunk
     margin: 0.5px;
 }
 """
+
+
+def read_settings():
+    """
+    Queries settings db and sets paths
+    :return: path to logisim, path to current semester labs
+    """
+
+    con = lite.connect('settings.sqlite3')
+    with con:
+        cur = con.cursor()
+        cur.execute('SELECT * FROM PATHS')
+        result = cur.fetchall()
+        for row in result:
+            print(row)
+        logisim_path = result[0][0]
+        working_dir = result[0][1]
+        # since import is not implemented - ignore import path: import_path = result[0][2]
+        return logisim_path, working_dir
 
 
 class CircFile:
@@ -469,6 +489,8 @@ class UiMainWindow1(Ui_mainWindow):
         Ui_mainWindow.__init__(self)
         self.grader_ref = None
         self.cal_window = None
+        self.logisim_path, self.working_dir = read_settings()
+        self.working_dir = os.path.expanduser(self.working_dir)
 
     def disable_fields(self):
         """
@@ -564,6 +586,9 @@ class UiMainWindow1(Ui_mainWindow):
                 a = np.array(a)
 
                 MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
+            else:
+                MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
+
             self.grader_ref.circ_file_name = MAIN_FILE_NAME
             self.filename_lineEdit.setText(MAIN_FILE_NAME.split('.')[0])
 
@@ -779,6 +804,7 @@ class UiMainWindow1(Ui_mainWindow):
         :return:
         """
         super().setupUi(main_window)
+        self.input_file_location.setText(self.working_dir)
         self.bind_functions()
 
     def bind_functions(self):
@@ -838,9 +864,9 @@ class UiMainWindow1(Ui_mainWindow):
         :return: nothing.
         """
         obtained_dir = QFileDialog.getExistingDirectory(caption='Select where to create due files',
-                                                        directory=self.input_file_location.text())+'/'
+                                                        directory=self.input_file_location.text())
         if len(obtained_dir) > 1:
-            self.input_file_location.setText(obtained_dir)
+            self.input_file_location.setText(obtained_dir+'/')
 
     def memorize_user_comment(self):
         """
@@ -885,8 +911,8 @@ class UiMainWindow1(Ui_mainWindow):
         and|or database.
         :return: nothing.
         """
-        path = '~/Downloads/'
-        command = 'java -jar ' + path + 'logisim-generic-2.7.1.jar '
+
+        command = 'java -jar ' + self.logisim_path + 'logisim-generic-2.7.1.jar '
         command_with_file = command + os.path.join(self.grader_ref.file_list[self.grader_ref.cur_idx], MAIN_FILE_NAME)
         #  if self.grader_ref.logisim_pid.pid > 0:
         self.kill_logisim()

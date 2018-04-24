@@ -6,16 +6,16 @@
 	<meta name="author" content="Ivan  Syzonenko"/>
 	<style>
 	body { 
-    margin: 0; /* Убираем отступы */
+    margin: 0; 
    }
 	.layer {
 		margin: 0;
-    background: #fc3; /* Цвет фона */
-    border-top: 5px solid #000; /* Параметры верхней линии */
-    border-bottom: 5px solid #000; /* Параметры нижней линии */
-    padding: 5px; /* Поля вокруг текста */
-    padding-top: 1px; /* Поле сверху */
-    padding-bottom: 10%; /* Поле снизу */
+    background: #fc3;
+    border-top: 5px solid #000; 
+    border-bottom: 5px solid #000; 
+    padding: 5px; 
+    padding-top: 1px; 
+    padding-bottom: 10%; 
     padding-left: 30px;
     
    }
