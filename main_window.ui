@@ -16,6 +16,10 @@
   <property name="windowTitle">
    <string>CSCI3130 grader</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>os_linux_1.ico</normaloff>os_linux_1.ico</iconset>
+  </property>
   <property name="accessibleName">
    <string/>
   </property>
@@ -699,9 +703,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="toolButton">
+       <widget class="QToolButton" name="settings_but">
         <property name="enabled">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="text">
          <string>Settings</string>
