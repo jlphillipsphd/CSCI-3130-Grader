@@ -33,7 +33,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
-      <widget class="BetterLineEdit" name="lineEdit">
+      <widget class="BetterLineEdit" name="lab_path">
        <property name="focusPolicy">
         <enum>Qt::StrongFocus</enum>
        </property>

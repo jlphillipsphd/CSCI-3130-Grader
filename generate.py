@@ -95,7 +95,7 @@ def create_html_pdf_zero_report(filename, stud_name, top_part, bot_part):
     os.remove(filename)
 
 
-def generate_answers(resubmit_num, dir_name, lab_type, lab_num):
+def generate_answers(resubmit_num, dir_name, lab_type, lab_num, year, semester, grader_name):
     """
     general function that figures out max points, filenames, etc
     and calls generate function with appropriate parameters
@@ -103,18 +103,31 @@ def generate_answers(resubmit_num, dir_name, lab_type, lab_num):
     :param dir_name: working dir
     :param lab_type: open or closed lab
     :param lab_num: just lab identifier
+    :param year: used wit semester to identify correct class list
+    :param semester: used wit year to identify correct class list
+    :param grader_name: name that will be displayed in the report
     :return:
     """
     students = {}
+    # select
+    import sqlite3 as lite
+    from db_init import get_ids_in_class_by_year_semester
+    ids = get_ids_in_class_by_year_semester(year, semester, 'grades.sqlite3')
+    with lite.connect('grades.sqlite3') as con:
+        cur = con.cursor()
+
+        for sid in ids.keys():
+            result = cur.execute('SELECT first_name, second_name FROM students WHERE pipeline_id=?', (str(sid),))
+            students[sid] = " ".join(result.fetchall()[0])
+
     if not students:
-        with open('students_list.txt', 'r') as stud_list_file:
+        with open('students_list1.txt', 'r') as stud_list_file:
             temp_arr = stud_list_file.readlines()
             for line in temp_arr:
                 sid, name = line.split('%')
                 students[sid.strip()] = name.strip()
         del temp_arr
-    else:
-        pass  # TODO add global student list ?
+
 
     if lab_type == 'Closed':
         max_points = 10

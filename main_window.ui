@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>857</width>
+    <width>888</width>
     <height>584</height>
    </rect>
   </property>
@@ -192,11 +192,17 @@
          <layout class="QHBoxLayout" name="horizontalLayout_8">
           <item>
            <widget class="QLineEdit" name="input_current_id">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="maximumSize">
              <size>
               <width>60</width>
               <height>40</height>
              </size>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -213,11 +219,17 @@
          <layout class="QHBoxLayout" name="horizontalLayout_9">
           <item>
            <widget class="QLineEdit" name="input_attempt">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="maximumSize">
              <size>
               <width>40</width>
               <height>40</height>
              </size>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -285,6 +297,9 @@
             <property name="text">
              <string/>
             </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -318,6 +333,9 @@
             <property name="locale">
              <locale language="English" country="UnitedStates"/>
             </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -337,7 +355,7 @@
           <item>
            <widget class="QLineEdit" name="input_final_grade">
             <property name="enabled">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
             <property name="maximumSize">
              <size>
@@ -350,6 +368,9 @@
             </property>
             <property name="text">
              <string/>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -452,7 +473,7 @@
         </property>
         <property name="minimumSize">
          <size>
-          <width>75</width>
+          <width>80</width>
           <height>20</height>
          </size>
         </property>
@@ -593,7 +614,7 @@
           </property>
           <widget class="QPlainTextEdit" name="input_response_browser">
            <property name="enabled">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
            <property name="minimumSize">
             <size>
@@ -696,6 +717,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="manage_labs_but">
+        <property name="text">
+         <string>Manage labs</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="set_style_checkbox">
         <property name="text">
          <string>style</string>
@@ -722,13 +750,6 @@
         </property>
         <property name="text">
          <string>save all</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="new_window_but">
-        <property name="text">
-         <string>Create due dates</string>
         </property>
        </widget>
       </item>

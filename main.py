@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from collections import Counter
@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 import numpy as np
 import sqlite3 as lite
+import zipfile
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtCore import QDateTime, QLocale
@@ -20,6 +21,7 @@ from main_window import Ui_mainWindow
 # from dates_window import Ui_dates_window
 from create_dates_diag import Ui_Create_dates_dialog
 from settings import Ui_Settings
+from manage_labs import Ui_manage_labs
 from db_init import *
 from simple_dialog import Ui_Dialog
 
@@ -196,6 +198,7 @@ class Grader:
         self.time = 0
         self.circ_obj_ref = None
         self.tot_elem = 0
+        self.lab_id = ''
 
     def open_dir(self):
         """
@@ -219,9 +222,13 @@ class Grader:
         self.attempt = int(self.working_dir.split('/')[-2].split('_')[3])
 
         if self.lab_type == 'Closed':
-            self.lab_max_grade = 10
+            self.lab_id = 'CLA' + str(self.lab_num)
+            # self.lab_max_grade = 10
         else:  # Open
-            self.lab_max_grade = 20
+            # self.lab_max_grade = 20
+            self.lab_id = 'OLA' + str(self.lab_num)
+
+        self.lab_max_grade = get_lab_max_value(self.lab_id)
 
         self.time = int(due_file[6:])
 
@@ -586,17 +593,21 @@ class UiMainWindow1(Ui_mainWindow):
             self.grader_ref.add_to_common_answers('')  # helps to remove all text in user comment section
 
             global MAIN_FILE_NAME, MAIN_FILE_NAME_OVERRIDE
-            if not MAIN_FILE_NAME_OVERRIDE:
-                a = []
-                for root, dirs, files in os.walk(working_dir):
-                    for file in files:
-                        if file.endswith(".circ"):
-                            a.append(file)
-                a = np.array(a)
+            #  Old way, I was determining filename as the most common submitted file.
+            # if not MAIN_FILE_NAME_OVERRIDE:
+            #     a = []
+            #     for root, dirs, files in os.walk(working_dir):
+            #         for file in files:
+            #             if file.endswith(".circ"):
+            #                 a.append(file)
+            #     a = np.array(a)
+            #
+            #     MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
+            # else:
+            #     MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
+            # Now I can just read it from DB
+            MAIN_FILE_NAME = get_lab_filename(my_grader.lab_id)[0]
 
-                MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
-            else:
-                MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
 
             self.grader_ref.circ_file_name = MAIN_FILE_NAME
             self.filename_lineEdit.setText(MAIN_FILE_NAME.split('.')[0])
@@ -791,7 +802,9 @@ class UiMainWindow1(Ui_mainWindow):
         """
         self.grader_ref.save_grade()
         self.save_response()
-        self.grader_ref.save_responce()
+        save_grade_and_report(self.grader_ref.get_stud_id, self.grader_ref.lab_num, self.grader_ref.lab_type,
+                              self.grader_ref.attempt, self.grader_ref.final_grade, self.grader_ref.resp_text)
+        # self.grader_ref.save_responce()
 
     def track_final_grade(self):
         """
@@ -822,17 +835,21 @@ class UiMainWindow1(Ui_mainWindow):
         :return: Nothing
         """
         paths, local = settings_db_read_settings()
-        working_dir = '/Please_specify_path_in_settings'
+        working_dir = ''
         if paths and len(paths) == 4:
             self.logisim_path = paths[0]
-            working_dir = paths[1]
-        if local and len(local) == 4:
+            if len(paths[1]) > 0:
+                working_dir = paths[1]
+            else:
+                working_dir = './'
+        if local and len(local) >= 4:
             self.grader_name = local[0]
             working_dir += str(local[1])
             working_dir += '_' + local[2] + '/'
             self.set_style_checkbox.setChecked(bool(local[3]))
 
-        self.input_file_location.setText(os.path.expanduser(working_dir))
+        if len(working_dir) > 0:
+            self.input_file_location.setText(os.path.expanduser(working_dir))
 
 
     def bind_functions(self):
@@ -853,7 +870,7 @@ class UiMainWindow1(Ui_mainWindow):
         #  self.popular_answers.activated.connect(self.select_saved_answer)
         self.but_create_report.setEnabled(True)  # Debug
         self.but_create_report.clicked.connect(self.generate_reports)
-        self.new_window_but.clicked.connect(self.open_dates_dialog)
+        # self.new_window_but.clicked.connect(self.open_dates_dialog)
         #  self.input_response_browser_user.focusInEvent(self, self.memorize_user_comment)
         #  self.custom_but_test.right_clicked[int].connect(self.dummy_d)
         self.input_file_location.dclicked.connect(self.open_file_diag)
@@ -862,6 +879,10 @@ class UiMainWindow1(Ui_mainWindow):
         self.set_style_checkbox.stateChanged.connect(self.change_win_style)
         self.but_reset.clicked.connect(self.reset_grade_resp)
         self.settings_but.clicked.connect(self.open_settings_dialog)
+        self.manage_labs_but.clicked.connect(self.open_manage_labs_diag)
+        # self.sync_but.clicked.connect(self.sync_files)
+
+
 
     def change_win_style(self):
         """
@@ -957,48 +978,36 @@ class UiMainWindow1(Ui_mainWindow):
         from generate import generate_answers
         # (resubmit_num, dir_name, lab_type, lab_num)
         if hasattr(self, 'grader_ref'):
+            loc_settings = settings_db_read_settings()[1]
             generate_answers(self.grader_ref.attempt, self.grader_ref.working_dir,
-                             self.grader_ref.lab_type, self.grader_ref.lab_num)
+                             self.grader_ref.lab_type, self.grader_ref.lab_num,
+                             loc_settings[1], loc_settings[2], self.grader_name)
             self.but_create_report.setEnabled(True)
 
-    # noinspection PyMethodMayBeStatic
-    def due_date_creator(self, due_location, due_dates):
-        """
-        Saves due files into location specified by user.
-        :param due_location: where to save.
-        :param due_dates: list of dates to save.
-        :return: nothing.
-        """
-        if len(due_location) > 1:
-            i = 1
-            for due_date in due_dates:
-                with open('%sdue_%d_%d' % (due_location, i, due_date), 'w'):
-                    i += 1
-        else:
-            print('Location was not specified.')
 
-    def open_dates_dialog(self):
-        """
-        Function bound to 'Create due dates' button.
-        Creates new window, saves selected dates into files, but calling 'due_date_creator'
-        :return: nothing.
-        """
-        self.new_window_but.setDisabled(True)
-        self.cal_window = QtWidgets.QDialog()
-        dui = Ui_Create_dates_dialog1()
-        dui.setupUi(self.cal_window)
-        # self.cal_window.finished.connect(self.check_new_win_result)
-        self.cal_window.show()
-        accepted = self.cal_window.exec_()
-        if accepted:
-            due_dates = list()
-            due_dates.append(dui.init_subm_date_time.dateTime().toTime_t())
-            due_dates.append(dui.first_subm_date_time.dateTime().toTime_t())
-            due_dates.append(dui.second_subm_date_time.dateTime().toTime_t())
-            due_dates.append(dui.third_subm_date_time.dateTime().toTime_t())
-            due_location = dui.lineEdit.text()
-            self.due_date_creator(due_location, due_dates)
-        self.new_window_but.setEnabled(True)
+
+    # def open_dates_dialog(self):
+    #     """
+    #     Function bound to 'Create due dates' button.
+    #     Creates new window, saves selected dates into files, but calling 'due_date_creator'
+    #     :return: nothing.
+    #     """
+    #     self.new_window_but.setDisabled(True)
+    #     self.cal_window = QtWidgets.QDialog()
+    #     dui = Ui_Create_dates_dialog1()
+    #     dui.setupUi(self.cal_window)
+    #     # self.cal_window.finished.connect(self.check_new_win_result)
+    #     self.cal_window.show()
+    #     accepted = self.cal_window.exec_()
+    #     if accepted:
+    #         due_dates = list()
+    #         due_dates.append(dui.init_subm_date_time.dateTime().toTime_t())
+    #         due_dates.append(dui.first_subm_date_time.dateTime().toTime_t())
+    #         due_dates.append(dui.second_subm_date_time.dateTime().toTime_t())
+    #         due_dates.append(dui.third_subm_date_time.dateTime().toTime_t())
+    #         due_location = dui.lab_path.text()
+    #         self.due_date_creator(due_location, due_dates)
+    #     self.new_window_but.setEnabled(True)
 
     def open_settings_dialog(self):
         """
@@ -1020,6 +1029,24 @@ class UiMainWindow1(Ui_mainWindow):
         self.centralwidget.setEnabled(True)
 
         self.settings_but.setEnabled(True)
+
+    def open_manage_labs_diag(self):
+        """
+        Function bound to 'Open mangage labs button'
+        Creates new window to mangage labs(import, export).
+        :return: nothing
+        """
+        self.manage_labs_but.setDisabled(True)
+        self.centralwidget.setDisabled(True)
+        self.manage_labs_window = QtWidgets.QDialog()
+        dui = Ui_manage_labs1()
+        dui.setupUi(self.manage_labs_window)
+
+        self.manage_labs_window.show()
+        self.manage_labs_window.exec_()
+
+        self.centralwidget.setEnabled(True)
+        self.manage_labs_but.setEnabled(True)
 
 
 class Ui_Create_settings_dialog(Ui_Settings):
@@ -1045,6 +1072,8 @@ class Ui_Create_settings_dialog(Ui_Settings):
         self.spin_year.valueChanged.connect(self.set_apply_restet_active)
         self.semester_comboBox.currentIndexChanged.connect(self.set_apply_restet_active)
         self.style_checkBox.stateChanged.connect(self.set_apply_restet_active)
+        self.sync_command.textChanged.connect(self.set_apply_restet_active)
+        self.input_grades_db.textChanged.connect(self.set_apply_restet_active)
 
     def setupUi(self, Settings):
         """
@@ -1076,9 +1105,16 @@ class Ui_Create_settings_dialog(Ui_Settings):
             self.spin_year.setValue(local[1])
             self.semester_comboBox.setCurrentIndex(int(local[2]))
             self.style_checkBox.setChecked(bool(local[3]))
+            self.sync_command.setText(local[4])
 
-        if len(local) or len(paths):
-                print('Obtained more settings than expected. Please check Ui_Create_settings_dialog.')
+        if (paths and len(paths) >= 4 ) and (local and len(local) >= 4):
+            self.spin_year.setEnabled(True)
+            self.semester_comboBox.setEnabled(True)
+            self.style_checkBox.setEnabled(True)
+            self.input_grader_name.setEnabled(True)
+            self.sync_command.setEnabled(True)
+        # if (local and len(local) > 5) or len(paths):
+        #         print('Obtained more settings than expected. Please check Ui_Create_settings_dialog.')
 
         self.buttonBox.button(self.buttonBox.Reset).setDisabled(True)
         self.buttonBox.button(self.buttonBox.Apply).setDisabled(True)
@@ -1113,6 +1149,7 @@ class Ui_Create_settings_dialog(Ui_Settings):
         In future it will contain checks for grades.db
         :return:
         """
+        from pathlib import Path
         if not os.path.isfile('settings.sqlite3'):
             if self.open_simple_dialog("Do you want to create settings database ?"):
                 if not settings_db_create(force=True):
@@ -1121,17 +1158,25 @@ class Ui_Create_settings_dialog(Ui_Settings):
                  self.input_grades_db.text())
         if os.path.isfile('settings.sqlite3'):
             local = (self.input_grader_name.text(), int(self.spin_year.text()),
-                            self.semester_comboBox.currentIndex(), self.style_checkBox.checkState())
+                    self.semester_comboBox.currentIndex(), self.style_checkBox.checkState(), self.sync_command.text())
             update_settings(paths, local)
 
-        if not os.path.isfile(self.input_grades_db.text()):
+        if len(self.input_grades_db.text()) > 1 and not os.path.isfile(self.input_grades_db.text()):
             if self.open_simple_dialog("Do you want to create GRADES database ?"):
-                if not grades_db_create(self.input_grades_db.text(), force=True):
+                print('Before grades creation.')
+                if not grades_db_create(Path(self.input_grades_db.text()).absolute(), force=True):
                     raise Exception('Was not able to create GRADES db.')
 
-        if True or os.path.isfile('settings.sqlite3'):  # TODO: Add check for grades DB.
+        if os.path.isfile(Path('./settings.sqlite3').absolute()) and \
+                os.path.isfile(Path(self.input_grades_db.text()).absolute()):
             self.buttonBox.button(self.buttonBox.Apply).setDisabled(True)
             self.buttonBox.button(self.buttonBox.Reset).setDisabled(True)
+        if len(self.input_local_stor.text()) > 1:
+            full_path = Path(self.input_local_stor.text()).absolute()
+            if not os.path.exists(full_path) or not os.path.isdir(full_path):
+                os.makedirs(full_path)
+
+
 
     def set_apply_restet_active(self):
         """
@@ -1178,7 +1223,247 @@ class SimpleDialog(Ui_Dialog):
         super().setupUi(Dialog)
         self.label_main_question.setText(phrase)
 
+
+class Ui_manage_labs1(Ui_manage_labs):
+    srv_sync_path = None
+    selected_path = None
+    selected_lab_name = None
+
+    def bind_functions(self):
+        self.labs_select_comboBox.currentIndexChanged.connect(self.update_status_bar)
+        self.import_but.clicked.connect(self.import_lab)
+        self.create_due_dates_but.clicked.connect(self.open_dates_dialog)
+        self.sync_but.clicked.connect(self.sync_files)
+        self.export_but.clicked.connect(self.export_pdfs)
+
+    def setupUi(self, manage_labs):
+        super().setupUi(manage_labs)
+        self.bind_functions()
+        self.set_local_vars()
+        self.scan_for_labs()
+
+    def set_local_vars(self):
+        pass
+
+    def update_status_bar(self, force=False):
+        # no need to scan files in background, but only when user selects it intentionally, or if it is first run
+        if self.labs_select_comboBox.hasFocus() or force:
+            self.selected_lab_name = self.labs_select_comboBox.currentText()
+            self.selected_path = self.srv_sync_path + self.selected_lab_name + '/'
+            zip_pdf_files = [f for f in os.listdir(self.selected_path) if '.zip' in f or '.pdf' in f]
+
+            pdf_files_len = len([f for f in zip_pdf_files if f.split('.')[1] == 'pdf'])
+            zip_files_len = len([f for f in zip_pdf_files if f.split('.')[1] == 'zip'])
+
+            self.status_bar.setText("Contains " + str(zip_files_len) + ' zip files and ' + str(pdf_files_len) + ' pdf files.')
+
+            # good_zip_files_size = len([f for f in zip_files if os.isfile(os.path.join(selected_path, f))])
+
+    def sync_files(self):
+        self.sync_but.setDisabled(True)
+        self.status_bar.setText("Synchronizing...")
+        sync_files()
+        self.status_bar.setText("Done.")
+        self.sync_but.setEnabled(True)
+
+    def scan_for_labs(self):
+        """
+        Scans local repository for labs to import into grading path
+        Offers creation of the due date for particular lab.
+        :return: Nothing
+        """
+        paths, local = settings_db_read_settings()
+        # self.local_path = paths[1] + str(local[1]) + '_' + str(local[2]) + '/'
+        self.main_lab_path = get_full_path(paths, local)
+        self.srv_sync_path = self.main_lab_path + "/server_sync/"
+        dirs = os.walk(self.srv_sync_path).__next__()[1]
+        if len(dirs) > 0:
+            self.labs_select_comboBox.addItems(sorted(dirs))
+            self.labs_select_comboBox.setCurrentIndex(0)
+            self.labs_select_comboBox.setFocus(True)
+            self.update_status_bar(force=True)
+
+
+    def import_lab(self):
+        if self.selected_path:
+            self.import_but.setDisabled(True)
+            from datetime import datetime
+            due_file = self.check_for_due_dates(self.selected_path)
+            if len(due_file) < 4:
+                self.status_bar.setText('Create due dates !')
+                self.import_but.setEnabled(True)
+                return False
+            else:
+                from shutil import copy2 as cp2
+                zip_files = [f for f in os.listdir(self.selected_path) if 'zip' in f]
+                real_zip_files_rev = sorted([f for f in zip_files if os.path.isfile(os.path.join(self.selected_path, f))], reverse=True)
+
+                current_check, prev_due, next_due, current_timestamp = self.get_grading_period(self.selected_path, due_file)
+
+
+                if current_timestamp < next_due:
+                    # we cannot grade before the due date
+                    self.status_bar.setText('Current date is less than next due date. It is too early to import.')
+                    self.import_but.setEnabled(True)
+                    return False
+
+                selected_files = []
+                for file in real_zip_files_rev:
+                    parts = file.split('.')[0].split('-')
+                    if int(parts[2]) > prev_due and int(parts[2]) <= next_due:
+                        if len(selected_files) == 0:
+                            selected_files.append(file)
+                        elif selected_files[-1].split('.')[0].split('-')[0] != parts[0]:
+                            selected_files.append(file)
+
+                penalty_mess = ''
+                if current_check == 1:
+                    penalty_mess = '100% - this is your max point(no resubmissions)'
+                elif current_check == 2:
+                    penalty_mess = '90% - first resubmission'
+                elif current_check == 3:
+                    penalty_mess = '70% - second resubmission'
+                elif current_check == 4:
+                    penalty_mess = '50% - third resubmission'
+
+                lab_type, _, lab_num = self.selected_lab_name.split('_')
+                max_points = get_lab_max_value(lab_type[0] + 'LA' + lab_num)
+                lab_filename = get_lab_filename(lab_type[0] + 'LA' + lab_num)
+
+                # temporary solution. path should be stored as local var
+                paths_to_grading_dir = self.main_lab_path + '/' + self.selected_lab_name + '_' + str(current_check) + '/'
+
+                proc_time = datetime.utcfromtimestamp(current_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+
+                # File manipulations goes below:
+
+                if not os.path.isdir(paths_to_grading_dir):
+                    os.makedirs(paths_to_grading_dir)
+
+                for file in reversed(selected_files):
+                    zipped_file = zipfile.ZipFile(self.selected_path + file)
+                    extraction_dir = paths_to_grading_dir + file.split('.')[0]
+                    zipped_file.extractall(paths_to_grading_dir + file.split('.')[0])
+                    zipped_file.close()
+
+                    subm_time = datetime.utcfromtimestamp(int(extraction_dir.split('-')[-1])).strftime('%Y-%m-%d %H:%M:%S')
+                    # check for required files
+                    if os.path.isfile(extraction_dir + '/' + lab_filename[0]):
+                        lab_responce = 'I did not find any errors. Good job !'
+                        cur_grade = max_points
+                    else:
+                        lab_responce = 'File "' + lab_filename[0] +'" was not found.\nThese files were found: ' +\
+                                       " ".join(os.listdir(extraction_dir))
+                        cur_grade = 0
+
+                    # This check is for a case when you graded the lab and trying to import it again.
+                    # No existing files should be wiped
+                    if not os.path.isfile(extraction_dir+'/penalty.txt'):
+                        with open(extraction_dir+'/penalty.txt', 'w') as f:
+                            f.write(penalty_mess)
+
+                    if not os.path.isfile(extraction_dir + '/grade.txt'):
+                        with open(extraction_dir + '/grade.txt', 'w') as f:
+                            f.write(str(cur_grade))
+
+                    if not os.path.isfile(extraction_dir + '/responce.txt'):
+                        with open(extraction_dir + '/responce.txt', 'w') as f:
+                            f.write(lab_responce)
+
+                    if not os.path.isfile(extraction_dir + '/tech_info.txt'):
+                        with open(extraction_dir + '/tech_info.txt', 'w') as f:
+                            f.writelines(['File was submited at %s(not implemented)<br/>\n' % subm_time,
+                                         'I started processing your file at %s(not implemented)<br/>\n' % proc_time,
+                                          "I found that your lab type is '%s' and it's number is %s <br/>" % (lab_type, lab_num),
+                                          'So max points for this lab type is <u>%d</u><br/>' % max_points,
+                                          'Theoretical max points: %s)' % penalty_mess])
+
+                cp2(self.selected_path + due_file[current_check-1], paths_to_grading_dir)
+
+                check_filename = paths_to_grading_dir + 'check_' + str(current_check) + '_' + str(current_timestamp)
+                with open(check_filename, 'w'): pass
+
+                cp2(check_filename, self.selected_path)
+
+                self.import_but.setEnabled(True)
+                return True
+
+        return False
+
+    def get_grading_period(self, dir, due_files):
+        # should comput correct grading period and return the due date in Unix timestamp format
+        import time
+        due_timestamps = [int(f.split('_')[2]) for f in due_files]
+        check_files = [int(f.split('_')[2]) for f in os.listdir(dir) if 'check_' in f]
+        if len(check_files) > 0:
+            cur_check_num = len(check_files) + 1           # 1 + 1
+            from_time = due_timestamps[cur_check_num - 2]  # 0 => after first due date
+            to_time = due_timestamps[cur_check_num - 1]    # 1 => before second due date
+        else:
+            from_time = 0
+            to_time = due_timestamps[0]
+            cur_check_num = 1
+        current_timestampt = int(time.time())
+        return cur_check_num, from_time, to_time, current_timestampt
+
+    def check_for_due_dates(self, dir):
+        """
+        It will be using old desing of due files.
+        I am going to switch to DB due dates when the time comes.
+        At this point DB has full support for it.
+        :param dir:
+        :return:
+        """
+        return sorted([f for f in os.listdir(dir) if 'due_' in f])
+
+
+    def open_dates_dialog(self):
+        """
+        Function bound to 'Create due dates' button.
+        Creates new window, saves selected dates into files, but calling 'due_date_creator'
+        :return: nothing.
+        """
+        self.create_due_dates_but.setDisabled(True)
+        self.cal_window = QtWidgets.QDialog()
+        dui = Ui_Create_dates_dialog1()
+        dui.setupUi(self.cal_window, self.selected_lab_name)
+        # self.cal_window.finished.connect(self.check_new_win_result)
+        self.cal_window.show()
+        accepted = self.cal_window.exec_()
+        if accepted:
+            due_dates = list()
+            due_dates.append(dui.init_subm_date_time.dateTime().toTime_t())
+            due_dates.append(dui.first_subm_date_time.dateTime().toTime_t())
+            due_dates.append(dui.second_subm_date_time.dateTime().toTime_t())
+            due_dates.append(dui.third_subm_date_time.dateTime().toTime_t())
+            due_location = dui.lab_path.text()
+            self.due_date_creator(due_location, due_dates)
+        self.create_due_dates_but.setEnabled(True)
+
+    # noinspection PyMethodMayBeStatic
+    def due_date_creator(self, due_location, due_dates):
+        """
+        Saves due files into location specified by user.
+        :param due_location: where to save.
+        :param due_dates: list of dates to save.
+        :return: nothing.
+        """
+        if len(due_location) > 1:
+            i = 1
+            for due_date in due_dates:
+                with open('%sdue_%d_%d' % (due_location, i, due_date), 'w'):
+                    i += 1
+        else:
+            print('Location was not specified.')
+
+    def export_pdfs(self):
+        self.export_but.setDisabled(True)
+        export_pdf()
+        self.export_but.setEnabled(True)
+
+
 class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):
+
     def bind_functions(self):
         """
         Place where all the bindings happen.
@@ -1187,7 +1472,7 @@ class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):
         self.init_subm_date_time.dateTimeChanged.connect(self.date_select)
         # self.select_file_path.clicked.connect(self.open_file_diag)
         # self.lineEdit.left_clicked[int].connect(self.dummy_d)
-        self.lineEdit.dclicked.connect(self.open_file_diag)
+        self.lab_path.dclicked.connect(self.open_file_diag)
 
     # noinspection PyMethodMayBeStatic
     def __dummy_d(self, nb):
@@ -1209,7 +1494,7 @@ class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):
         """
         print('Single left click ')
 
-    def setupUi(self, Create_dates_dialog):
+    def setupUi(self, Create_dates_dialog, selected_lab=''):
         """
         Initiates creation of the new window for
         due dates creation.
@@ -1220,6 +1505,13 @@ class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):
         super().setupUi(Create_dates_dialog)
         self.bind_functions()
         self.init_subm_date_time.setDateTime(QDateTime.currentDateTime())
+        paths, local = settings_db_read_settings()
+        good_path = get_full_path(paths, local) + '/server_sync/'
+        try:
+            good_path += selected_lab + '/'
+        except Exception as e:
+            print('Exception when tried to append selected folder from Manage labs. ', e)
+        self.lab_path.setText(good_path)
 
     def date_select(self):
         """
@@ -1236,12 +1528,20 @@ class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):
         :return: nothing.
         """
         obtained_dir = QFileDialog.getExistingDirectory(caption='Select where to create due files',
-                                                        directory=self.lineEdit.text())+'/'
+                                                        directory=self.lab_path.text())+'/'
         if len(obtained_dir) > 1:
-            self.lineEdit.setText(obtained_dir)
+            self.lab_path.setText(obtained_dir)
 
 
 if __name__ == "__main__":
+    # generate_final_grades('./grades.sqlite3', 2018, 1)
+    # reconstruct_grades_and_comments()
+    # update_lab_submissions_paths('./grades.sqlite3', '/home/vanya/Documents/3130_labs/2018/', 2018, 1)
+    # import_previous_grades_into_db('./grades.sqlite3', 'grades.xls', 2018, 1)
+    # load_student_list_into_grades_db('./grades.sqlite3', 2018, '1')
+
+    # sync_files()
+
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = UiMainWindow1()
