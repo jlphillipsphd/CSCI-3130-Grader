@@ -1,9 +1,5 @@
 # CSCI-3130-Grader
 Small program that saves huge amount of time on grading logisim labs.
 
-It requires student_list file which is not provided. <br /> 
-However, you can create your own with next format:  <br />
-id1 % First Last name1 <br /> 
-id2 % First Last name2 <br /> 
-id3 % First Last name3 <br /> 
+You may find student list (students_list2.txt) or create your own and import it. Please note that there is no gui interface for student list import, but you can just call load_student_list_into_grades_db() function and provide correct name of the expected file.
 
