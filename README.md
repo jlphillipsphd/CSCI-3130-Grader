@@ -41,7 +41,5 @@ Remote lab storage: ./remote_dir/. Please note, that it does not have to be loca
 
 
 Screenshots:
-![gui]
-(screenshot1.png)
-![report]
-(screenshot2.png)
+![gui](https://github.com/fio2003/CSCI-3130-Grader/blob/master/screenshot1.png "gui")
+![report](https://github.com/fio2003/CSCI-3130-Grader/blob/master/screenshot2.png "report")
