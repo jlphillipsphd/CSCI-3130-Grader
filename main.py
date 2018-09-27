@@ -215,7 +215,9 @@ class Grader:
         root, dirs, files = os.walk(self.working_dir).__next__()
         files.sort()
         # check_file = files[0]  # not used at this time
-        due_file = files[1]
+        if len(files) < 1:
+            raise Exception("No due files ? Extra files in working directory ?")
+        due_file = files[1] # TODO: change this to a better design.
 
         self.lab_type = self.working_dir.split('/')[-2].split('_')[0]
         self.lab_num = int(self.working_dir.split('/')[-2].split('_')[2])
@@ -571,6 +573,9 @@ class UiMainWindow1(Ui_mainWindow):
         self.enable_fields()
         self.input_response_browser_user.setEnabled(True)
         self.but_regrade.setText('GRADE')
+        self.but_save_all.setEnabled(True)
+        self.but_save_response.setEnabled(True)
+        self.check_autosave.setEnabled(True)
 
     def my_open_file(self):
         """
@@ -593,21 +598,22 @@ class UiMainWindow1(Ui_mainWindow):
             self.grader_ref.add_to_common_answers('')  # helps to remove all text in user comment section
 
             global MAIN_FILE_NAME, MAIN_FILE_NAME_OVERRIDE
-            #  Old way, I was determining filename as the most common submitted file.
-            # if not MAIN_FILE_NAME_OVERRIDE:
-            #     a = []
-            #     for root, dirs, files in os.walk(working_dir):
-            #         for file in files:
-            #             if file.endswith(".circ"):
-            #                 a.append(file)
-            #     a = np.array(a)
-            #
-            #     MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
-            # else:
-            #     MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
-            # Now I can just read it from DB
-            MAIN_FILE_NAME = get_lab_filename(my_grader.lab_id)[0]
 
+            MAIN_FILE_NAME = get_lab_filename(my_grader.lab_id)[0]
+            if not MAIN_FILE_NAME:
+                # Old way, I was determining filename as the most common submitted file.
+                if not MAIN_FILE_NAME_OVERRIDE:
+                    a = []
+                    for root, dirs, files in os.walk(working_dir):
+                        for file in files:
+                            if file.endswith(".circ"):
+                                a.append(file)
+                    a = np.array(a)
+
+                    MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
+                else:
+                    MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
+                # Now I can just read it from DB
 
             self.grader_ref.circ_file_name = MAIN_FILE_NAME
             self.filename_lineEdit.setText(MAIN_FILE_NAME.split('.')[0])
@@ -829,6 +835,18 @@ class UiMainWindow1(Ui_mainWindow):
         self.bind_functions()
         self.sync_params_to_settings()
 
+        from pathlib import Path
+        settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
+        if os.path.isfile(settings_location):
+            paths, local = settings_db_read_settings()
+            if len(os.walk(get_full_path(paths, local) + "/server_sync/").__next__()[1]) > 0:
+                if not self.manage_labs_but.isEnabled():
+                    self.manage_labs_but.setEnabled(True)
+                if not self.but_file_open.isEnabled():
+                    self.but_file_open.setEnabled(True)
+                    self.input_file_location.setEnabled(True)
+
+
     def sync_params_to_settings(self):
         """
         Once returned from settings tab - updates grading path
@@ -868,7 +886,7 @@ class UiMainWindow1(Ui_mainWindow):
         self.input_final_grade.textEdited.connect(self.track_final_grade)
         #  self.but_edit_done.clicked.connect(self.resp_edit_done)
         #  self.popular_answers.activated.connect(self.select_saved_answer)
-        self.but_create_report.setEnabled(True)  # Debug
+        # self.but_create_report.setEnabled(True)  # Debug
         self.but_create_report.clicked.connect(self.generate_reports)
         # self.new_window_but.clicked.connect(self.open_dates_dialog)
         #  self.input_response_browser_user.focusInEvent(self, self.memorize_user_comment)
@@ -1030,6 +1048,13 @@ class UiMainWindow1(Ui_mainWindow):
 
         self.settings_but.setEnabled(True)
 
+        if not self.manage_labs_but.isEnabled():
+            from pathlib import Path
+            settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
+            if os.path.isfile(settings_location):
+                self.manage_labs_but.setEnabled(True)
+
+
     def open_manage_labs_diag(self):
         """
         Function bound to 'Open mangage labs button'
@@ -1047,6 +1072,13 @@ class UiMainWindow1(Ui_mainWindow):
 
         self.centralwidget.setEnabled(True)
         self.manage_labs_but.setEnabled(True)
+
+        if not self.but_file_open.isEnabled():
+            paths, local = settings_db_read_settings()
+            # if there are some labs in server sync directory:
+            if len(os.walk(get_full_path(paths, local) + "/server_sync/").__next__()[1]) > 0:
+                self.but_file_open.setEnabled(True)
+                self.input_file_location.setEnabled(True)
 
 
 class Ui_Create_settings_dialog(Ui_Settings):
@@ -1150,31 +1182,76 @@ class Ui_Create_settings_dialog(Ui_Settings):
         :return:
         """
         from pathlib import Path
-        if not os.path.isfile('settings.sqlite3'):
+        settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
+        if not os.path.isfile(settings_location):
             if self.open_simple_dialog("Do you want to create settings database ?"):
                 if not settings_db_create(force=True):
                     raise Exception('Was not able to create SETTINGS db.')
+        if len(self.input_local_stor.text()) > 0:
+            if self.input_local_stor.text()[-1] != '/':
+                self.input_local_stor.setText(self.input_local_stor.text() + '/')
+        if len(self.input_rem_stor.text()) > 0:
+            if self.input_rem_stor.text()[-1] != '/':
+                self.input_rem_stor.setText(self.input_rem_stor.text() + '/')
+        if len(self.input_logisim_path.text()) > 0:
+            if self.input_logisim_path.text()[-1] != '/':
+                self.input_logisim_path.setText(self.input_logisim_path.text() + '/')
+
+
         paths = (self.input_logisim_path.text(), self.input_local_stor.text(), self.input_rem_stor.text(),
                  self.input_grades_db.text())
-        if os.path.isfile('settings.sqlite3'):
+        if os.path.isfile(settings_location):
             local = (self.input_grader_name.text(), int(self.spin_year.text()),
                     self.semester_comboBox.currentIndex(), self.style_checkBox.checkState(), self.sync_command.text())
+            if len(self.input_local_stor.text()) > 0:
+                local_stor = str(Path(os.path.expanduser(os.path.expandvars(self.input_local_stor.text()))).absolute())
+                if local_stor[-1] != '/':
+                    local_stor += '/'
+                if not os.path.isdir(local_stor):
+                    os.mkdir(local_stor)
+                local_grading_path = local_stor + self.spin_year.text() + '_' +\
+                                     str(self.semester_comboBox.currentIndex())
+                if not os.path.isdir(local_grading_path):
+                    os.mkdir(local_grading_path)
             update_settings(paths, local)
 
-        if len(self.input_grades_db.text()) > 1 and not os.path.isfile(self.input_grades_db.text()):
+
+        grades_location = str(Path(os.path.expandvars(os.path.expanduser(self.input_grades_db.text()))).absolute())
+        if len(self.input_grades_db.text()) > 1 and not os.path.isfile(grades_location):
             if self.open_simple_dialog("Do you want to create GRADES database ?"):
                 print('Before grades creation.')
-                if not grades_db_create(Path(self.input_grades_db.text()).absolute(), force=True):
+                if not grades_db_create(grades_location, force=True):
                     raise Exception('Was not able to create GRADES db.')
 
-        if os.path.isfile(Path('./settings.sqlite3').absolute()) and \
-                os.path.isfile(Path(self.input_grades_db.text()).absolute()):
+        if os.path.isfile(settings_location) and os.path.isfile(grades_location):
             self.buttonBox.button(self.buttonBox.Apply).setDisabled(True)
             self.buttonBox.button(self.buttonBox.Reset).setDisabled(True)
-        if len(self.input_local_stor.text()) > 1:
-            full_path = Path(self.input_local_stor.text()).absolute()
-            if not os.path.exists(full_path) or not os.path.isdir(full_path):
-                os.makedirs(full_path)
+            if not self.groupBox_user.isEnabled():
+                self.groupBox_user.setEnabled(True)
+            if not self.input_logisim_path.isEnabled():
+                self.input_logisim_path.setEnabled(True)
+                self.label_logisim_path.setEnabled(True)
+            if not self.input_local_stor.isEnabled():
+                self.input_local_stor.setEnabled(True)
+                self.label_local_stor.setEnabled(True)
+            if not self.input_rem_stor.isEnabled():
+                self.input_rem_stor.setEnabled(True)
+                self.label_rem_stor.setEnabled(True)
+            if not self.spin_year.isEnabled():
+                self.spin_year.setEnabled(True)
+            if not self.semester_comboBox.isEnabled():
+                self.semester_comboBox.setEnabled(True)
+            if not self.style_checkBox.isEnabled():
+                self.style_checkBox.setEnabled(True)
+            if not self.input_grader_name.isEnabled():
+                self.input_grader_name.setEnabled(True)
+            if not self.sync_command.isEnabled():
+                self.sync_command.setEnabled(True)
+
+        # if len(self.input_local_stor.text()) > 1:
+        #     full_path = Path(self.input_local_stor.text()).absolute()
+        #     if not os.path.exists(full_path) or not os.path.isdir(full_path):
+        #         os.makedirs(full_path)
 
 
 
@@ -1228,6 +1305,7 @@ class Ui_manage_labs1(Ui_manage_labs):
     srv_sync_path = None
     selected_path = None
     selected_lab_name = None
+    zip_files_len = None
 
     def bind_functions(self):
         self.labs_select_comboBox.currentIndexChanged.connect(self.update_status_bar)
@@ -1240,7 +1318,17 @@ class Ui_manage_labs1(Ui_manage_labs):
         super().setupUi(manage_labs)
         self.bind_functions()
         self.set_local_vars()
-        self.scan_for_labs()
+
+        try:
+            self.scan_for_labs()
+            if self.labs_select_comboBox.count() > 0:
+                self.labs_select_comboBox.setEnabled(True)
+                self.import_but.setEnabled(True)
+                self.create_due_dates_but.setEnabled(True)
+                self.export_but.setEnabled(True)
+        except Exception as e:
+            print('Error in manage labs. Probably your grading path was not set properly: ', e)
+
 
     def set_local_vars(self):
         pass
@@ -1252,10 +1340,15 @@ class Ui_manage_labs1(Ui_manage_labs):
             self.selected_path = self.srv_sync_path + self.selected_lab_name + '/'
             zip_pdf_files = [f for f in os.listdir(self.selected_path) if '.zip' in f or '.pdf' in f]
 
-            pdf_files_len = len([f for f in zip_pdf_files if f.split('.')[1] == 'pdf'])
-            zip_files_len = len([f for f in zip_pdf_files if f.split('.')[1] == 'zip'])
+            self.pdf_files_len = len([f for f in zip_pdf_files if f.split('.')[1] == 'pdf'])
+            self.zip_files_len = len([f for f in zip_pdf_files if f.split('.')[1] == 'zip'])
 
-            self.status_bar.setText("Contains " + str(zip_files_len) + ' zip files and ' + str(pdf_files_len) + ' pdf files.')
+            self.status_bar.setText("Contains " + str(self.zip_files_len) + ' zip files and ' + str(self.pdf_files_len) + ' pdf files.')
+
+            if self.zip_files_len > 0 and not self.create_due_dates_but.isEnabled():
+                self.export_but.setEnabled(True)
+                self.import_but.setEnabled(True)
+                self.labs_select_comboBox.setEnabled(True)
 
             # good_zip_files_size = len([f for f in zip_files if os.isfile(os.path.join(selected_path, f))])
 
@@ -1265,6 +1358,14 @@ class Ui_manage_labs1(Ui_manage_labs):
         sync_files()
         self.status_bar.setText("Done.")
         self.sync_but.setEnabled(True)
+        sync_success = True  # there are no tools to check it at this point.
+        if sync_success and not self.labs_select_comboBox.isEnabled():
+            self.labs_select_comboBox.setEnabled(True)
+            self.create_due_dates_but.setEnabled(True)
+            self.scan_for_labs()
+            #  TODO: There should be additional checks to enable import and export, but I do not have enough time to implement them.
+            self.import_but.setEnabled(True)
+            self.export_but.setEnabled(True)
 
     def scan_for_labs(self):
         """
@@ -1340,6 +1441,7 @@ class Ui_manage_labs1(Ui_manage_labs):
                 if not os.path.isdir(paths_to_grading_dir):
                     os.makedirs(paths_to_grading_dir)
 
+                imported_files_counter = 0
                 for file in reversed(selected_files):
                     zipped_file = zipfile.ZipFile(self.selected_path + file)
                     extraction_dir = paths_to_grading_dir + file.split('.')[0]
@@ -1348,7 +1450,7 @@ class Ui_manage_labs1(Ui_manage_labs):
 
                     subm_time = datetime.utcfromtimestamp(int(extraction_dir.split('-')[-1])).strftime('%Y-%m-%d %H:%M:%S')
                     # check for required files
-                    if os.path.isfile(extraction_dir + '/' + lab_filename[0]):
+                    if not lab_filename[0] or os.path.isfile(extraction_dir + '/' + lab_filename[0]):
                         lab_responce = 'I did not find any errors. Good job !'
                         cur_grade = max_points
                     else:
@@ -1372,11 +1474,12 @@ class Ui_manage_labs1(Ui_manage_labs):
 
                     if not os.path.isfile(extraction_dir + '/tech_info.txt'):
                         with open(extraction_dir + '/tech_info.txt', 'w') as f:
-                            f.writelines(['File was submited at %s(not implemented)<br/>\n' % subm_time,
-                                         'I started processing your file at %s(not implemented)<br/>\n' % proc_time,
+                            f.writelines(['File was submited at %s<br/>\n' % subm_time,
+                                         'I started processing your file at %s<br/>\n' % proc_time,
                                           "I found that your lab type is '%s' and it's number is %s <br/>" % (lab_type, lab_num),
                                           'So max points for this lab type is <u>%d</u><br/>' % max_points,
                                           'Theoretical max points: %s)' % penalty_mess])
+                    imported_files_counter += 1
 
                 cp2(self.selected_path + due_file[current_check-1], paths_to_grading_dir)
 
@@ -1386,6 +1489,7 @@ class Ui_manage_labs1(Ui_manage_labs):
                 cp2(check_filename, self.selected_path)
 
                 self.import_but.setEnabled(True)
+                self.status_bar.setText("Imported ", imported_files_counter, " files.")
                 return True
 
         return False

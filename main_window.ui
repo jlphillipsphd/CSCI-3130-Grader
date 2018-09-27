@@ -29,6 +29,9 @@
      <layout class="QHBoxLayout" name="horizontalLayout_12">
       <item>
        <widget class="BetterLineEdit" name="input_file_location">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="locale">
          <locale language="English" country="UnitedStates"/>
         </property>
@@ -55,6 +58,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="but_file_open">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="locale">
          <locale language="English" country="UnitedStates"/>
         </property>
@@ -493,6 +499,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="but_reset">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="minimumSize">
          <size>
           <width>60</width>
@@ -699,7 +708,7 @@
       <item>
        <widget class="QPushButton" name="but_save_response">
         <property name="enabled">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="locale">
          <locale language="English" country="UnitedStates"/>
@@ -711,6 +720,9 @@
       </item>
       <item>
        <widget class="QCheckBox" name="check_autosave">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>autosave</string>
         </property>
@@ -718,6 +730,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="manage_labs_but">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Manage labs</string>
         </property>
@@ -743,7 +758,7 @@
       <item>
        <widget class="QPushButton" name="but_save_all">
         <property name="enabled">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="locale">
          <locale language="English" country="UnitedStates"/>

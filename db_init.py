@@ -139,13 +139,14 @@ def grades_db_create(db_name, force=False):
             print('Done.')
             print('Creating labs...')
             cur.execute("""CREATE TABLE lab_names (
-                            id             INT     NOT NULL PRIMARY KEY,
-                            type           TEXT    NOT NULL,
-                            num            INTEGER NOT NULL,
-                            max_grade      INTEGER NOT NULL,
-                            name           VARCHAR,
-                            description    VARCHAR,
-                            grader_comment VARCHAR  );""")
+                            id              INT     NOT NULL PRIMARY KEY,
+                            type            TEXT    NOT NULL,
+                            num             INTEGER NOT NULL,
+                            max_grade       INTEGER NOT NULL,
+                            name            VARCHAR,
+                            description     VARCHAR,
+                            grader_comment  VARCHAR,
+                            mandatory_files VARCHAR );""")
             con.commit()
             print('Done.')
             print('Creating grades...')
@@ -542,8 +543,11 @@ def sync_files(self=None):
 
     for lab_name in lab_names:
         command = local[4] + ' ' + os.path.expanduser(paths[2] + lab_name) + '/*.zip' + ' ' + full_path + lab_name + '/'
-        process = subprocess.Popen(os.path.expandvars(command), stdout=subprocess.PIPE, shell=True)
-        process.communicate()
+        try:
+            process = subprocess.Popen(os.path.expandvars(command), stdout=subprocess.PIPE, shell=True)
+            process.communicate()
+        except Exception as e:
+            print('Error in rsync: ', e)
         # output, error = process.communicate()
         # print(output)
         # print(error)

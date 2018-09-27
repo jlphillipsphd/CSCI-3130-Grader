@@ -20,7 +20,11 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QComboBox" name="labs_select_comboBox"/>
+      <widget class="QComboBox" name="labs_select_comboBox">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="sync_but">
@@ -31,6 +35,9 @@
      </item>
      <item>
       <widget class="QPushButton" name="import_but">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>import labs</string>
        </property>
@@ -38,6 +45,9 @@
      </item>
      <item>
       <widget class="QPushButton" name="create_due_dates_but">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>Create due dates</string>
        </property>
@@ -45,6 +55,9 @@
      </item>
      <item>
       <widget class="QPushButton" name="export_but">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>Export pdfs</string>
        </property>
