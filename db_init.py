@@ -541,16 +541,20 @@ def sync_files(self=None):
         for lab_name in lab_names:
             os.makedirs(full_path + lab_name)
 
+    proc_arr = []
     for lab_name in lab_names:
         command = local[4] + ' ' + os.path.expanduser(paths[2] + lab_name) + '/*.zip' + ' ' + full_path + lab_name + '/'
         try:
-            process = subprocess.Popen(os.path.expandvars(command), stdout=subprocess.PIPE, shell=True)
-            process.communicate()
+            proc_arr.append(subprocess.Popen(os.path.expandvars(command), stdout=subprocess.PIPE, shell=True))
+            proc_arr[-1].communicate()
         except Exception as e:
             print('Error in rsync: ', e)
         # output, error = process.communicate()
         # print(output)
         # print(error)
+
+    for proc_elem in proc_arr:
+        proc_elem.wait()
 
 def export_pdf(self=None):
     import subprocess

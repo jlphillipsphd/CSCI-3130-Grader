@@ -1311,6 +1311,7 @@ class Ui_manage_labs1(Ui_manage_labs):
         self.labs_select_comboBox.currentIndexChanged.connect(self.update_status_bar)
         self.import_but.clicked.connect(self.import_lab)
         self.create_due_dates_but.clicked.connect(self.open_dates_dialog)
+        # self.sync_but.clicked.connect(lambda i: self.sync_but.setDisabled(True))
         self.sync_but.clicked.connect(self.sync_files)
         self.export_but.clicked.connect(self.export_pdfs)
 
@@ -1353,7 +1354,7 @@ class Ui_manage_labs1(Ui_manage_labs):
             # good_zip_files_size = len([f for f in zip_files if os.isfile(os.path.join(selected_path, f))])
 
     def sync_files(self):
-        self.sync_but.setDisabled(True)
+        self.sync_but.setDisabled(True)  # does not affect gui until function is finished. I do not know how to fix it.
         self.status_bar.setText("Synchronizing...")
         sync_files()
         self.status_bar.setText("Done.")
