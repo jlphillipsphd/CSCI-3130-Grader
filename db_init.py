@@ -572,6 +572,7 @@ def export_pdf(self=None):
         i = 1
         while os.path.isdir(full_path + lab_name + '_' + str(i)):
             nums_to_sync += str(i) + ','
+            i += 1
 
         nums_to_sync = nums_to_sync[0:-1] + '}'
         if len(nums_to_sync) > 3:
