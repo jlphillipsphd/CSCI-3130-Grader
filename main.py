@@ -549,6 +549,7 @@ class UiMainWindow1(Ui_mainWindow):
         """
         # activate elements
         self.but_begin.setDisabled(True)
+        self.but_begin.repaint()
         self.progressBar.setEnabled(True)
 
         self.disable_fields()
@@ -993,6 +994,8 @@ class UiMainWindow1(Ui_mainWindow):
         :return: nothing.
         """
         self.but_create_report.setDisabled(True)
+        self.but_create_report.setText('Generating..')
+        self.but_create_report.repaint()
         from generate import generate_answers
         # (resubmit_num, dir_name, lab_type, lab_num)
         if hasattr(self, 'grader_ref'):
@@ -1001,6 +1004,7 @@ class UiMainWindow1(Ui_mainWindow):
                              self.grader_ref.lab_type, self.grader_ref.lab_num,
                              loc_settings[1], loc_settings[2], self.grader_name)
             self.but_create_report.setEnabled(True)
+            self.but_create_report.setText('Create reports')
 
 
 
@@ -1034,11 +1038,13 @@ class UiMainWindow1(Ui_mainWindow):
         :return: nothing.
         """
         self.settings_but.setDisabled(True)
+        self.settings_but.repaint()
         self.settings_window = QtWidgets.QDialog()
         dui = Ui_Create_settings_dialog()
         dui.setupUi(self.settings_window)
 
         self.centralwidget.setDisabled(True)
+        self.centralwidget.repaint()
 
         self.settings_window.show()
         self.settings_window.exec_()
@@ -1062,7 +1068,9 @@ class UiMainWindow1(Ui_mainWindow):
         :return: nothing
         """
         self.manage_labs_but.setDisabled(True)
+        self.manage_labs_but.repaint()
         self.centralwidget.setDisabled(True)
+        self.centralwidget.repaint()
         self.manage_labs_window = QtWidgets.QDialog()
         dui = Ui_manage_labs1()
         dui.setupUi(self.manage_labs_window)
@@ -1225,7 +1233,9 @@ class Ui_Create_settings_dialog(Ui_Settings):
 
         if os.path.isfile(settings_location) and os.path.isfile(grades_location):
             self.buttonBox.button(self.buttonBox.Apply).setDisabled(True)
+            self.buttonBox.button(self.buttonBox.Apply).repaint()
             self.buttonBox.button(self.buttonBox.Reset).setDisabled(True)
+            self.buttonBox.button(self.buttonBox.Reset).repaint()
             if not self.groupBox_user.isEnabled():
                 self.groupBox_user.setEnabled(True)
             if not self.input_logisim_path.isEnabled():
@@ -1277,6 +1287,7 @@ class Ui_Create_settings_dialog(Ui_Settings):
         dui.setupUi(self.simple_diag, phrase)
 
         self.buttonBox.setDisabled(True)
+        self.buttonBox.repaint()
 
         self.simple_diag.setWindowTitle('Settings confirmation')
         self.simple_diag.show()
@@ -1354,11 +1365,16 @@ class Ui_manage_labs1(Ui_manage_labs):
             # good_zip_files_size = len([f for f in zip_files if os.isfile(os.path.join(selected_path, f))])
 
     def sync_files(self):
-        self.sync_but.setDisabled(True)  # does not affect gui until function is finished. I do not know how to fix it.
+        self.sync_but.setDisabled(True)
+        self.sync_but.setText('Synchronizing...')
+        self.sync_but.repaint()
         self.status_bar.setText("Synchronizing...")
+        self.status_bar.repaint()
         sync_files()
         self.status_bar.setText("Done.")
+        self.sync_but.setText('Sync to local storage')
         self.sync_but.setEnabled(True)
+
         sync_success = True  # there are no tools to check it at this point.
         if sync_success and not self.labs_select_comboBox.isEnabled():
             self.labs_select_comboBox.setEnabled(True)
@@ -1389,6 +1405,8 @@ class Ui_manage_labs1(Ui_manage_labs):
     def import_lab(self):
         if self.selected_path:
             self.import_but.setDisabled(True)
+            self.import_but.setText('Importing..')
+            self.import_but.repaint()
             from datetime import datetime
             due_file = self.check_for_due_dates(self.selected_path)
             if len(due_file) < 4:
@@ -1406,6 +1424,7 @@ class Ui_manage_labs1(Ui_manage_labs):
                 if current_timestamp < next_due:
                     # we cannot grade before the due date
                     self.status_bar.setText('Current date is less than next due date. It is too early to import.')
+                    self.import_but.setText('Import labs')
                     self.import_but.setEnabled(True)
                     return False
 
@@ -1529,6 +1548,7 @@ class Ui_manage_labs1(Ui_manage_labs):
         :return: nothing.
         """
         self.create_due_dates_but.setDisabled(True)
+        self.create_due_dates_but.repaint()
         self.cal_window = QtWidgets.QDialog()
         dui = Ui_Create_dates_dialog1()
         dui.setupUi(self.cal_window, self.selected_lab_name)
@@ -1563,7 +1583,10 @@ class Ui_manage_labs1(Ui_manage_labs):
 
     def export_pdfs(self):
         self.export_but.setDisabled(True)
+        self.export_but.setText('Exporting..')
+        self.export_but.repaint()
         export_pdf()
+        self.export_but.setText('Export pdfs')
         self.export_but.setEnabled(True)
 
 
