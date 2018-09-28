@@ -1489,7 +1489,7 @@ class Ui_manage_labs1(Ui_manage_labs):
                 cp2(check_filename, self.selected_path)
 
                 self.import_but.setEnabled(True)
-                self.status_bar.setText("Imported ", imported_files_counter, " files.")
+                self.status_bar.setText("Imported " + str(imported_files_counter) + " files.")
                 return True
 
         return False

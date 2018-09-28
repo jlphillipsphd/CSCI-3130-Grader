@@ -6,6 +6,7 @@ You may find student list (students_list2.txt) or create your own and import it.
 Installation and grading:
 
 apt-get install python3 numpy python3-pip wkhtmltopdf
+
 pip3 install --user numpy pyqt5 pandas pathlib pdfkit wkhtmltopdf 
 
 
