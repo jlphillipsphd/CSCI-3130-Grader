@@ -591,10 +591,14 @@ class UiMainWindow1(Ui_mainWindow):
         :return:
         """
         working_dir = self.input_file_location.text()
+        # self.input_response_browser.clear()
+        # self.input_response_browser_user.clear()
+        self.input_response_browser.setPlainText('I did not find any errors. Good job!')
 
         try:
             my_grader = Grader(working_dir)
             my_grader.open_dir()
+
             self.grader_ref = my_grader
 
             self.input_max_pos_grade.setText(str(my_grader.lab_max_grade))
@@ -623,6 +627,8 @@ class UiMainWindow1(Ui_mainWindow):
 
             self.grader_ref.circ_file_name = MAIN_FILE_NAME
             self.filename_lineEdit.setText(MAIN_FILE_NAME.split('.')[0])
+            # self.reset_grade_resp()
+            self.but_save_all.setChecked(False)
 
             self.but_create_report.setEnabled(True)
             self.but_begin.setEnabled(True)
@@ -703,8 +709,10 @@ class UiMainWindow1(Ui_mainWindow):
         """
         self.disable_fields()
         self.but_regrade.setText('GRADE')
-        if self.check_autosave.isChecked():
+        if self.check_autosave.isChecked() and self.grader_ref.cur_idx >= 0:
             self.save_all()
+        else:
+            self.check_autosave.setDisabled(True)
         next_idx = self.grader_ref.next_circ()
         # self.check_file()
         self.show_stat()
