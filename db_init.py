@@ -570,11 +570,14 @@ def export_pdf(self=None):
     for lab_name in lab_names:
         nums_to_sync = '_{'
         i = 1
-        while os.path.isdir(full_path + lab_name + '_' + str(i)):
+        while os.path.isdir(full_path + lab_name + '_' + str(i) + '/Answers'):
             nums_to_sync += str(i) + ','
             i += 1
 
         nums_to_sync = nums_to_sync[0:-1] + '}'
+        # for case when we have only one directory to sync
+        if len(nums_to_sync) == 4:
+            nums_to_sync = '_1'
         if len(nums_to_sync) > 3:
             command = local[4] + ' ' + full_path + lab_name + nums_to_sync + '/Answers/*.pdf ' + os.path.expanduser(paths[2]) + lab_name + '/'
             process = subprocess.Popen(os.path.expandvars(command), stdout=subprocess.PIPE, shell=True)

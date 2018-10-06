@@ -840,12 +840,15 @@ class UiMainWindow1(Ui_mainWindow):
         settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
         if os.path.isfile(settings_location):
             paths, local = settings_db_read_settings()
-            if len(os.walk(get_full_path(paths, local) + "/server_sync/").__next__()[1]) > 0:
-                if not self.manage_labs_but.isEnabled():
-                    self.manage_labs_but.setEnabled(True)
-                if not self.but_file_open.isEnabled():
-                    self.but_file_open.setEnabled(True)
-                    self.input_file_location.setEnabled(True)
+            try:
+                if len(os.walk(get_full_path(paths, local) + "/server_sync/").__next__()[1]) > 0:
+                    if not self.manage_labs_but.isEnabled():
+                        self.manage_labs_but.setEnabled(True)
+                    if not self.but_file_open.isEnabled():
+                        self.but_file_open.setEnabled(True)
+                        self.input_file_location.setEnabled(True)
+            except Exception as e:
+                print("Most likely you did not fill all the settings: ", e)
 
 
     def sync_params_to_settings(self):
@@ -1420,6 +1423,11 @@ class Ui_manage_labs1(Ui_manage_labs):
 
                 current_check, prev_due, next_due, current_timestamp = self.get_grading_period(self.selected_path, due_file)
 
+                if current_check == 0:
+                    self.status_bar.setText('This lab has no more resubmissions (graded 4 times).')
+                    self.import_but.setText('Import labs')
+                    self.import_but.setEnabled(True)
+                    return False
 
                 if current_timestamp < next_due:
                     # we cannot grade before the due date
@@ -1509,6 +1517,7 @@ class Ui_manage_labs1(Ui_manage_labs):
                 cp2(check_filename, self.selected_path)
 
                 self.import_but.setEnabled(True)
+                self.import_but.setText('Import labs')
                 self.status_bar.setText("Imported " + str(imported_files_counter) + " files.")
                 return True
 
@@ -1520,9 +1529,14 @@ class Ui_manage_labs1(Ui_manage_labs):
         due_timestamps = [int(f.split('_')[2]) for f in due_files]
         check_files = [int(f.split('_')[2]) for f in os.listdir(dir) if 'check_' in f]
         if len(check_files) > 0:
-            cur_check_num = len(check_files) + 1           # 1 + 1
-            from_time = due_timestamps[cur_check_num - 2]  # 0 => after first due date
-            to_time = due_timestamps[cur_check_num - 1]    # 1 => before second due date
+            if len(check_files) >= 4:
+                cur_check_num = 0
+                from_time = 0
+                to_time = 0
+            else:
+                cur_check_num = len(check_files) + 1           # 1 + 1
+                from_time = due_timestamps[cur_check_num - 2]  # 0 => after first due date
+                to_time = due_timestamps[cur_check_num - 1]    # 1 => before second due date
         else:
             from_time = 0
             to_time = due_timestamps[0]
