@@ -248,6 +248,10 @@ class Grader:
             self.stud_ids.append(temp_arr[0])
             self.timestamps.append(int(temp_arr[2]))
 
+        for file in self.file_list:
+            print(file)
+
+
     def get_stud_id(self):
         """
         Just a simple getter.
@@ -577,6 +581,7 @@ class UiMainWindow1(Ui_mainWindow):
         self.but_save_all.setEnabled(True)
         self.but_save_response.setEnabled(True)
         self.check_autosave.setEnabled(True)
+        self.but_reset.setEnabled(True)
 
     def my_open_file(self):
         """
@@ -621,6 +626,7 @@ class UiMainWindow1(Ui_mainWindow):
 
             self.but_create_report.setEnabled(True)
             self.but_begin.setEnabled(True)
+
         except Exception as e:  # TODO add log error
             print('Error in open_file : ', e)
             print(sys.exc_info()[0])
