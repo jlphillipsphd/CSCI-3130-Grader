@@ -564,6 +564,7 @@ class UiMainWindow1(Ui_mainWindow):
 
         self.progressBar.setMaximum(self.grader_ref.tot_elem)
         self.progressBar.setValue(0)
+        self.popular_answers.clear()
 
         # self.grader_ref.check_file(0)
         # self.grader_ref.stud_id = self.grader_ref.stud_ids[self.grader_ref.cur_idx]

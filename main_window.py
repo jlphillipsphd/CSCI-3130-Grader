@@ -257,9 +257,10 @@ class Ui_mainWindow(object):
         self.splitter.setOrientation(QtCore.Qt.Vertical)
         self.splitter.setObjectName("splitter")
         self.input_response_browser = QtWidgets.QPlainTextEdit(self.splitter)
-        self.input_response_browser.setEnabled(False)
+        self.input_response_browser.setEnabled(True)
         self.input_response_browser.setMinimumSize(QtCore.QSize(0, 30))
         self.input_response_browser.setReadOnly(True)
+        self.input_response_browser.setTextInteractionFlags(QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
         self.input_response_browser.setObjectName("input_response_browser")
         self.input_response_browser_user = BetterPlainTextEdit(self.splitter)
         self.input_response_browser_user.setEnabled(False)
@@ -272,7 +273,8 @@ class Ui_mainWindow(object):
         self.verticalLayout_5 = QtWidgets.QVBoxLayout(self.tab_prev_resp)
         self.verticalLayout_5.setObjectName("verticalLayout_5")
         self.input_prev_response = QtWidgets.QPlainTextEdit(self.tab_prev_resp)
-        self.input_prev_response.setEnabled(False)
+        self.input_prev_response.setEnabled(True)
+        self.input_prev_response.setTextInteractionFlags(QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
         self.input_prev_response.setObjectName("input_prev_response")
         self.verticalLayout_5.addWidget(self.input_prev_response)
         self.tabs_for_log_and_resp.addTab(self.tab_prev_resp, "")
@@ -343,7 +345,7 @@ class Ui_mainWindow(object):
         mainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(mainWindow)
-        self.tabs_for_log_and_resp.setCurrentIndex(0)
+        self.tabs_for_log_and_resp.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(mainWindow)
 
     def retranslateUi(self, mainWindow):
