@@ -12,9 +12,12 @@ from pathlib import Path
 import numpy as np
 import sqlite3 as lite
 import zipfile
+from dateutil import tz
+from datetime import datetime
+import datetime
 
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtCore import QDateTime, QLocale
+from PyQt5.QtCore import QDateTime, QLocale, QTimeZone
 from PyQt5.QtWidgets import QFileDialog
 
 from main_window import Ui_mainWindow
@@ -24,6 +27,8 @@ from settings import Ui_Settings
 from manage_labs import Ui_manage_labs
 from db_init import *
 from simple_dialog import Ui_Dialog
+from generate import *
+
 
 QLocale.setDefault(QLocale(QLocale.English))
 
@@ -165,7 +170,7 @@ class CircFile:
 
 
 class Grader:
-    def __init__(self, working_directory):
+    def __init__(self, working_directory, grader='Ivan'):
         self.__from_date = 0
         self.to_date = 0
         self.attempt = 0
@@ -199,6 +204,7 @@ class Grader:
         self.circ_obj_ref = None
         self.tot_elem = 0
         self.lab_id = ''
+        self.grader = grader
 
     def open_dir(self):
         """
@@ -232,24 +238,59 @@ class Grader:
 
         self.lab_max_grade = get_lab_max_value(self.lab_id)
 
-        self.time = int(due_file[6:])
+        # self.time = int(due_file[6:])
 
-        dirs.sort()  # sort list of submitted labs
-        if dirs[0] == 'Answers':
-            dirs.pop(0)
+        # dirs.sort()  # sort list of submitted labs
+        # if dirs[0] == 'Answers':
+        #     dirs.pop(0)
 
-        self.stud_ids = dirs
-        self.stud_ids = list()
-        self.timestamps = list()
-        # directory_list = list()
-        for name in dirs:
-            self.file_list.append(os.path.join(root, name))
-            temp_arr = name.split('-')
-            self.stud_ids.append(temp_arr[0])
-            self.timestamps.append(int(temp_arr[2]))
+        self.circ_file_name = get_lab_filename(self.lab_id)[0]
+        self.year, self.semester = self.working_dir.split('/')[-3].split('_')
+        self.lid = get_labid_in_schedule(get_lab_id(self.lab_type, self.lab_num), self.year, self.semester)
+        self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = get_empty_grades_by_lid(self.lid, self.attempt)
 
-        for file in self.file_list:
-            print(file)
+        atime = get_grading_period(self.lid)
+        self.time_from = atime[1]
+        self.time_to = atime[2]
+        self.time_cur = atime[3]
+
+        self.time_from_qt = QDateTime.fromSecsSinceEpoch(self.time_from)
+        self.time_to_qt = QDateTime.fromSecsSinceEpoch(self.time_to)
+        self.time_cur_qt = QDateTime.fromSecsSinceEpoch(self.time_cur)
+
+        if self.lab_paths is not None and len(self.lab_paths) > 0:
+            self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = self.check_files()
+        else:
+            self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = get_all_grades_by_lid(self.lid, self.attempt)
+
+        self.grades = [self.lab_max_grade]*len(self.grade_ids)
+        # self.stud_ids = dirs
+        # self.stud_ids = list()
+        # self.timestamps = list()
+        # # directory_list = list()
+        # for name in dirs:
+        #     self.file_list.append(os.path.join(root, name))
+        #     temp_arr = name.split('-')
+        #     self.stud_ids.append(temp_arr[0])
+        #     self.timestamps.append(int(temp_arr[2]))
+
+        # for file in self.file_list:
+        #     print(file)
+
+    def check_files(self):
+        paths_with_files_list = list()
+        good_ids = list()
+        good_sids = list()
+        good_tss = list()
+        for i, stud_path in enumerate(self.lab_paths):
+            if os.path.exists(os.path.join(stud_path, self.circ_file_name)):
+                paths_with_files_list.append(stud_path)
+                good_ids.append(self.grade_ids[i])
+                good_sids.append(self.stud_ids[i])
+                good_tss.append(self.timestamps[i])
+            else:
+                gen_filenotfound_resp(self.grade_ids[i], stud_path, self.circ_file_name, self.grader)
+        return good_tss, self.stud_ids, good_ids, paths_with_files_list
 
 
     def get_stud_id(self):
@@ -266,7 +307,7 @@ class Grader:
         :param log_event: what happened.
         :return: nothing
         """
-        self.global_log += self.stud_id + ': ' + str(log_event) + '\n'
+        self.global_log += str(self.stud_id) + ': ' + str(log_event) + '\n'
 
     def get_parsed_pins(self):
         """
@@ -376,6 +417,18 @@ class Grader:
 
         # self.read_prev_resp()
 
+    def read_resp2(self):
+        self.final_grade, self.resp_text, graded = get_resp_and_grade(self.grade_ids[self.cur_idx])
+        if graded is None:
+            self.final_grade = self.lab_max_grade
+            self.resp_text = 'I did not find any errors. Good job!'
+        # self.resp_text = '' if self.resp_text is None else self.resp_text
+        self.resp_len = len(self.resp_text)
+        return graded
+
+    def read_prev_resp2(self):
+        self.previous_responses = get_prev_resp(self.grade_ids[self.cur_idx], self.stud_ids[self.cur_idx], self.lab_id)
+
     def read_prev_resp(self):
         """
         In case we are working with resubmission,
@@ -405,14 +458,17 @@ class Grader:
         self.cur_idx += 1
         # self.check_file(self.cur_idx)
         self.user_comment = ''
-        if self.check_circ_exist():
-            self.read_resp()
+        graded = self.read_resp2()
+        if graded:
+            self.read_prev_resp2()
+        # if self.check_circ_exist():
+        #     self.read_resp()
         self.stud_id = self.stud_ids[self.cur_idx]
-        try:
-            self.read_prev_resp()
-        except Exception as e:
-            print('Error during attempt to read prev resp when opening next circuit: ', e)
-            # TODO add handler
+        # try:
+        #     self.read_prev_resp()
+        # except Exception as e:
+        #     print('Error during attempt to read prev resp when opening next circuit: ', e)
+        #     # TODO add handler
         return self.cur_idx
 
     def prev_circ(self):
@@ -423,14 +479,17 @@ class Grader:
         self.cur_idx -= 1
         # self.check_file(self.cur_idx)
         self.user_comment = ''
-        if self.check_circ_exist():
-            self.read_resp()
+        graded = self.read_resp2()
+        if graded:
+            self.read_prev_resp2()
+        # if self.check_circ_exist():
+        #     self.read_resp()
         self.stud_id = self.stud_ids[self.cur_idx]
-        try:
-            self.read_prev_resp()
-        except Exception as e:
-            print('Error during attempt to read prev resp when opening prev circuit: ', e)
-            # TODO add handler
+        # try:
+        #     self.read_prev_resp()
+        # except Exception as e:
+        #     print('Error during attempt to read prev resp when opening prev circuit: ', e)
+        #     # TODO add handler
         return self.cur_idx
 
     def check_wrong(self):
@@ -447,9 +506,10 @@ class Grader:
         Function bound to 'Save grade' button. Saves grade into 'grade.txt' file
         :return: nothing.
         """
-        file = os.path.join(self.file_list[self.cur_idx], 'grade.txt')
+        file = os.path.join(self.lab_paths[self.cur_idx], 'grade.txt')
         with open(file, 'w') as grade_file:
             grade_file.write(str(self.final_grade))
+
         self.log_update('Grade saved')
 
     def save_responce(self):
@@ -458,7 +518,7 @@ class Grader:
         Saves current (auto and manual) responce into 'responce.txt'.
         :return: nothing.
         """
-        file = os.path.join(self.file_list[self.cur_idx], 'responce.txt')
+        file = os.path.join(self.lab_paths[self.cur_idx], 'responce.txt')
         with open(file, 'w') as resp_file:
             resp_file.write(self.resp_text)
             if self.user_comment:
@@ -473,6 +533,14 @@ class Grader:
         """
         self.save_grade()
         self.save_responce()
+
+
+    def save_all2(self):
+        """
+        Same as save_all but uses db to save grade
+        :return:
+        """
+        save_grade_and_report(self.grade_ids[self.cur_idx], self.final_grade, self.resp_text, self.user_comment, self.grader)
 
     def generate_response(self):
         """
@@ -552,13 +620,15 @@ class UiMainWindow1(Ui_mainWindow):
         :return:
         """
         # activate elements
+        cur_year, cur_sem = self.grader_ref.working_dir.split('/')[-3].split('_')
+        self.class_id_to_id = get_ids_in_class_by_year_semester(cur_year, cur_sem)[1]
         self.but_begin.setDisabled(True)
         self.but_begin.repaint()
         self.progressBar.setEnabled(True)
 
         self.disable_fields()
 
-        self.grader_ref.tot_elem = len(self.grader_ref.file_list)
+        self.grader_ref.tot_elem = len(self.grader_ref.lab_paths)
         if self.grader_ref.tot_elem > 1:
             self.but_next.setEnabled(True)
 
@@ -569,6 +639,9 @@ class UiMainWindow1(Ui_mainWindow):
         # self.grader_ref.check_file(0)
         # self.grader_ref.stud_id = self.grader_ref.stud_ids[self.grader_ref.cur_idx]
         self.grader_ref.cur_idx = -1
+        # graded = self.grader_ref.read_resp2()
+        # if graded:
+        #     self.grader_ref.read_prev_resp2()
         self.next_circ()
         # self.grader_ref.read_resp()
         # self.grader_ref.read_prev_resp()
@@ -595,39 +668,41 @@ class UiMainWindow1(Ui_mainWindow):
         # self.input_response_browser.clear()
         # self.input_response_browser_user.clear()
         self.input_response_browser.setPlainText('I did not find any errors. Good job!')
+        grader_name = settings_db_read_settings()[1][0]
+        self.current_tz = QDateTime.currentDateTime().timeZoneAbbreviation()
 
         try:
-            my_grader = Grader(working_dir)
+            my_grader = Grader(working_dir, grader_name)
             my_grader.open_dir()
 
             self.grader_ref = my_grader
 
             self.input_max_pos_grade.setText(str(my_grader.lab_max_grade))
-            my_grader.to_date = QDateTime.fromSecsSinceEpoch(my_grader.time)
             self.input_attempt.setText(str(my_grader.attempt))
-            self.dateTimeEdit_to.setDateTime(my_grader.to_date)
+            self.dateTimeEdit_from.setDateTime(my_grader.time_from_qt)
+            self.dateTimeEdit_to.setDateTime(my_grader.time_to_qt)
             self.grader_ref.add_to_common_answers('')  # helps to remove all text in user comment section
+            # QDateTime.currentDateTime().timeZone()
+            # global MAIN_FILE_NAME, MAIN_FILE_NAME_OVERRIDE
 
-            global MAIN_FILE_NAME, MAIN_FILE_NAME_OVERRIDE
+            # MAIN_FILE_NAME = get_lab_filename(my_grader.lab_id)[0]
+            # if not MAIN_FILE_NAME:
+            #     # Old way, I was determining filename as the most common submitted file.
+            #     if not MAIN_FILE_NAME_OVERRIDE:
+            #         a = []
+            #         for root, dirs, files in os.walk(working_dir):
+            #             for file in files:
+            #                 if file.endswith(".circ"):
+            #                     a.append(file)
+            #         a = np.array(a)
+            #
+            #         MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
+            #     else:
+            #         MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
+            #     # Now I can just read it from DB
 
-            MAIN_FILE_NAME = get_lab_filename(my_grader.lab_id)[0]
-            if not MAIN_FILE_NAME:
-                # Old way, I was determining filename as the most common submitted file.
-                if not MAIN_FILE_NAME_OVERRIDE:
-                    a = []
-                    for root, dirs, files in os.walk(working_dir):
-                        for file in files:
-                            if file.endswith(".circ"):
-                                a.append(file)
-                    a = np.array(a)
-
-                    MAIN_FILE_NAME = Counter(a.flat).most_common(1)[0][0]
-                else:
-                    MAIN_FILE_NAME = MAIN_FILE_NAME_OVERRIDE
-                # Now I can just read it from DB
-
-            self.grader_ref.circ_file_name = MAIN_FILE_NAME
-            self.filename_lineEdit.setText(MAIN_FILE_NAME.split('.')[0])
+            # self.grader_ref.circ_file_name = MAIN_FILE_NAME
+            self.filename_lineEdit.setText(self.grader_ref.circ_file_name.split('.')[0])
             # self.reset_grade_resp()
             self.but_save_all.setChecked(False)
 
@@ -645,7 +720,8 @@ class UiMainWindow1(Ui_mainWindow):
         :return:
         """
         self.input_prev_response.setPlainText(self.grader_ref.previous_responses)
-        if not Path(self.grader_ref.file_list[self.grader_ref.cur_idx]+'/'+self.grader_ref.circ_file_name).is_file():
+        file_path = os.path.join(self.grader_ref.lab_paths[self.grader_ref.cur_idx], self.grader_ref.circ_file_name)
+        if not Path(file_path).is_file():
             self.kill_logisim()
             self.grader_ref.final_grade = 0
             self.input_response_browser.setPlainText('File does not exist.')
@@ -653,13 +729,13 @@ class UiMainWindow1(Ui_mainWindow):
         else:
             if self.but_regrade.text() == '&GRADE' or self.but_regrade.text() == 'GRADE':
                 try:
-                    self.run_logisim()
+                    self.run_logisim(file_path)
                 except Exception as e:
                     print('Error in run_logisim: ', e)
                     print(sys.exc_info()[0])
 
-        self.input_current_id.setText(self.grader_ref.get_stud_id())
-        self.dateTimeEdit_submitted.setDateTime(QDateTime.fromSecsSinceEpoch(self.grader_ref.submitted))
+        self.input_current_id.setText(self.class_id_to_id[self.grader_ref.get_stud_id()])
+        self.dateTimeEdit_submitted.setDateTime(QDateTime.fromSecsSinceEpoch(self.grader_ref.timestamps[self.grader_ref.cur_idx]))
         self.input_subtract.setText('')
         self.input_final_grade.setText(str(self.grader_ref.final_grade))
         self.input_log_browser.setText(self.grader_ref.global_log)
@@ -767,9 +843,9 @@ class UiMainWindow1(Ui_mainWindow):
         self.disable_fields()
         self.but_regrade.setText('regrade')
         self.show_stat()
-        self.grader_ref.check_file()
-        if self.grader_ref.check_circ_exist():
-            self.check_file()
+        # self.grader_ref.check_file()
+        # if self.grader_ref.check_circ_exist():
+        #     self.check_file()
         self.input_response_browser.setPlainText(self.grader_ref.resp_text)
         self.enable_fields()
 
@@ -780,7 +856,7 @@ class UiMainWindow1(Ui_mainWindow):
         """
         self.disable_fields()
         self.show_stat()
-        self.grader_ref.check_file()
+        # self.grader_ref.check_file()
         if self.grader_ref.check_circ_exist():
             self.input_response_browser.setPlainText('I did not find any errors. Good job!')
             self.grader_ref.final_grade = self.grader_ref.lab_max_grade
@@ -823,10 +899,9 @@ class UiMainWindow1(Ui_mainWindow):
         :return:
         """
         self.grader_ref.save_grade()
-        self.save_response()
-        save_grade_and_report(self.grader_ref.get_stud_id, self.grader_ref.lab_num, self.grader_ref.lab_type,
-                              self.grader_ref.attempt, self.grader_ref.final_grade, self.grader_ref.resp_text)
         # self.grader_ref.save_responce()
+        self.save_response()
+        self.grader_ref.save_all2()
 
     def track_final_grade(self):
         """
@@ -950,7 +1025,7 @@ class UiMainWindow1(Ui_mainWindow):
         Creates file dialog to select correct lab directory.
         :return: nothing.
         """
-        obtained_dir = QFileDialog.getExistingDirectory(caption='Select where to create due files',
+        obtained_dir = QFileDialog.getExistingDirectory(caption='Select directory with lab',
                                                         directory=self.input_file_location.text())
         if len(obtained_dir) > 1:
             self.input_file_location.setText(obtained_dir+'/')
@@ -991,7 +1066,7 @@ class UiMainWindow1(Ui_mainWindow):
         except Exception as e:
             print("was not able to kill : ", e)
 
-    def run_logisim(self):
+    def run_logisim(self, filename):
         """
         Opens logisim in a separate process.
         Path is hardcoded, but will be changed once I have 'settings' window
@@ -999,11 +1074,11 @@ class UiMainWindow1(Ui_mainWindow):
         :return: nothing.
         """
 
-        command = 'java -jar ' + self.logisim_path + 'logisim-generic-2.7.1.jar '
-        command_with_file = command + os.path.join(self.grader_ref.file_list[self.grader_ref.cur_idx], MAIN_FILE_NAME)
+        command = 'java -jar ' + self.logisim_path + 'logisim-generic-2.7.1.jar {}'.format(filename)
+        # command_with_file = command + os.path.join(self.grader_ref.file_list[self.grader_ref.cur_idx], MAIN_FILE_NAME)
         #  if self.grader_ref.logisim_pid.pid > 0:
         self.kill_logisim()
-        self.grader_ref.logisim_pid = subprocess.Popen(command_with_file, shell=True)
+        self.grader_ref.logisim_pid = subprocess.Popen(command, shell=True)
 
     def generate_reports(self):
         """
@@ -1018,9 +1093,9 @@ class UiMainWindow1(Ui_mainWindow):
         # (resubmit_num, dir_name, lab_type, lab_num)
         if hasattr(self, 'grader_ref'):
             loc_settings = settings_db_read_settings()[1]
-            generate_answers(self.grader_ref.attempt, self.grader_ref.working_dir,
-                             self.grader_ref.lab_type, self.grader_ref.lab_num,
-                             loc_settings[1], loc_settings[2], self.grader_name)
+            generate_answers3(self.grader_ref.lid, self.grader_ref.attempt, self.grader_ref.year, self.grader_ref.semester)
+            # generate_answers(self.grader_ref.attempt, self.grader_ref.working_dir, self.grader_ref.lab_type, self.grader_ref.lab_num, loc_settings[1], loc_settings[2], self.grader_name)
+            # generate_answers2(self.grader_ref.attempt, self.grader_ref.working_dir, self.grader_ref.lab_type, self.grader_ref.lab_num, loc_settings[1], loc_settings[2], self.grader_name)
             self.but_create_report.setEnabled(True)
             self.but_create_report.setText('Create reports')
 
@@ -1121,6 +1196,8 @@ class Ui_Create_settings_dialog(Ui_Settings):
         self.buttonBox.button(self.buttonBox.RestoreDefaults).clicked.connect(self.set_default_user_input_with_paths)
         self.buttonBox.button(self.buttonBox.Apply).clicked.connect(self.create_or_update_settings_db)
         self.buttonBox.button(self.buttonBox.Ok).clicked.connect(self.create_or_update_settings_db)
+
+        self.import_stuents_btn.clicked.connect(self.import_students)
 
         # TODO: make 'personal' events and update only fields that have been changed
         self.input_logisim_path.textChanged.connect(self.set_apply_restet_active)
@@ -1281,7 +1358,18 @@ class Ui_Create_settings_dialog(Ui_Settings):
         #     if not os.path.exists(full_path) or not os.path.isdir(full_path):
         #         os.makedirs(full_path)
 
+    def import_students(self):
+        """
+        creates dialog with selector for students file to parse and input into the db
+        :return: Nothing
+        """
+        self.import_stuents_btn.setEnabled(False)
+        stud_file = QFileDialog.getOpenFileName(caption="Select file with students' info", directory='.', filter="Text files (*.txt)")
+        if len(stud_file[0]) > 3:
+            load_student_list_into_grades_db(self.input_grades_db.text(), self.spin_year.value(), self.semester_comboBox.currentIndex(), filename=stud_file[0])
 
+
+        self.import_stuents_btn.setEnabled(True)
 
     def set_apply_restet_active(self):
         """
@@ -1425,7 +1513,7 @@ class Ui_manage_labs1(Ui_manage_labs):
             self.import_but.setDisabled(True)
             self.import_but.setText('Importing..')
             self.import_but.repaint()
-            from datetime import datetime
+
             due_file = self.check_for_due_dates(self.selected_path)
             if len(due_file) < 4:
                 self.status_bar.setText('Create due dates !')
@@ -1436,9 +1524,12 @@ class Ui_manage_labs1(Ui_manage_labs):
                 zip_files = [f for f in os.listdir(self.selected_path) if 'zip' in f]
                 real_zip_files_rev = sorted([f for f in zip_files if os.path.isfile(os.path.join(self.selected_path, f))], reverse=True)
 
-                current_check, prev_due, next_due, current_timestamp = self.get_grading_period(self.selected_path, due_file)
+                year, semester = self.main_lab_path.split('/')[-1].split('_')
+                ltype, _, lab_num = self.selected_lab_name.split('_')
+                lid = get_labid_in_schedule(get_lab_id(ltype, int(lab_num)), year, semester)
+                current_check, prev_due, next_due, current_timestamp = get_grading_period(lid)
 
-                if current_check == 0:
+                if current_check > 4:
                     self.status_bar.setText('This lab has no more resubmissions (graded 4 times).')
                     self.import_but.setText('Import labs')
                     self.import_but.setEnabled(True)
@@ -1451,14 +1542,7 @@ class Ui_manage_labs1(Ui_manage_labs):
                     self.import_but.setEnabled(True)
                     return False
 
-                selected_files = []
-                for file in real_zip_files_rev:
-                    parts = file.split('.')[0].split('-')
-                    if int(parts[2]) > prev_due and int(parts[2]) <= next_due:
-                        if len(selected_files) == 0:
-                            selected_files.append(file)
-                        elif selected_files[-1].split('.')[0].split('-')[0] != parts[0]:
-                            selected_files.append(file)
+
 
                 penalty_mess = ''
                 if current_check == 1:
@@ -1471,27 +1555,43 @@ class Ui_manage_labs1(Ui_manage_labs):
                     penalty_mess = '50% - third resubmission'
 
                 lab_type, _, lab_num = self.selected_lab_name.split('_')
-                max_points = get_lab_max_value(lab_type[0] + 'LA' + lab_num)
-                lab_filename = get_lab_filename(lab_type[0] + 'LA' + lab_num)
+                lab_corr_name = lab_type[0] + 'LA' + lab_num
+                max_points = get_lab_max_value(lab_corr_name)
+                lab_filename = get_lab_filename(lab_corr_name)
 
                 # temporary solution. path should be stored as local var
                 paths_to_grading_dir = self.main_lab_path + '/' + self.selected_lab_name + '_' + str(current_check) + '/'
 
-                proc_time = datetime.utcfromtimestamp(current_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                # proc_time = datetime.utcfromtimestamp(current_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                proc_time = time_to_str_with_tz(current_timestamp)
 
                 # File manipulations goes below:
 
                 if not os.path.isdir(paths_to_grading_dir):
                     os.makedirs(paths_to_grading_dir)
 
+                cur_year, cur_sem = paths_to_grading_dir.split('/')[-3].split('_')
+                id_to_classId = get_ids_in_class_by_year_semester(cur_year, cur_sem)[0]
                 imported_files_counter = 0
+
+                selected_files = []
+                for file in real_zip_files_rev:
+                    parts = file.split('.')[0].split('-')
+                    if int(parts[2]) > prev_due and int(parts[2]) <= next_due:
+                        if len(selected_files) == 0:
+                            selected_files.append(file)
+                        elif selected_files[-1].split('.')[0].split('-')[0] != parts[0]:
+                            selected_files.append(file)
+
                 for file in reversed(selected_files):
                     zipped_file = zipfile.ZipFile(self.selected_path + file)
                     extraction_dir = paths_to_grading_dir + file.split('.')[0]
                     zipped_file.extractall(paths_to_grading_dir + file.split('.')[0])
                     zipped_file.close()
-
-                    subm_time = datetime.utcfromtimestamp(int(extraction_dir.split('-')[-1])).strftime('%Y-%m-%d %H:%M:%S')
+                    parts = file.split('.')[0].split('-')
+                    subm_int = int(extraction_dir.split('-')[-1])
+                    # subm_time = datetime.utcfromtimestamp(subm_int).replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).strftime('%Y-%m-%d %H:%M:%S')
+                    subm_time = time_to_str_with_tz(subm_int)
                     # check for required files
                     if not lab_filename[0] or os.path.isfile(extraction_dir + '/' + lab_filename[0]):
                         lab_responce = 'I did not find any errors. Good job !'
@@ -1522,12 +1622,15 @@ class Ui_manage_labs1(Ui_manage_labs):
                                           "I found that your lab type is '%s' and it's number is %s <br/>" % (lab_type, lab_num),
                                           'So max points for this lab type is <u>%d</u><br/>' % max_points,
                                           'Theoretical max points: %s)' % penalty_mess])
+
+                    init_new_lab(id_to_classId[parts[0]], lid, current_check, subm_int, extraction_dir)
                     imported_files_counter += 1
 
                 cp2(self.selected_path + due_file[current_check-1], paths_to_grading_dir)
 
                 check_filename = paths_to_grading_dir + 'check_' + str(current_check) + '_' + str(current_timestamp)
                 with open(check_filename, 'w'): pass
+                save_grade_and_report(lid, att=current_check)
 
                 cp2(check_filename, self.selected_path)
 
@@ -1538,26 +1641,7 @@ class Ui_manage_labs1(Ui_manage_labs):
 
         return False
 
-    def get_grading_period(self, dir, due_files):
-        # should comput correct grading period and return the due date in Unix timestamp format
-        import time
-        due_timestamps = [int(f.split('_')[2]) for f in due_files]
-        check_files = [int(f.split('_')[2]) for f in os.listdir(dir) if 'check_' in f]
-        if len(check_files) > 0:
-            if len(check_files) >= 4:
-                cur_check_num = 0
-                from_time = 0
-                to_time = 0
-            else:
-                cur_check_num = len(check_files) + 1           # 1 + 1
-                from_time = due_timestamps[cur_check_num - 2]  # 0 => after first due date
-                to_time = due_timestamps[cur_check_num - 1]    # 1 => before second due date
-        else:
-            from_time = 0
-            to_time = due_timestamps[0]
-            cur_check_num = 1
-        current_timestampt = int(time.time())
-        return cur_check_num, from_time, to_time, current_timestampt
+
 
     def check_for_due_dates(self, dir):
         """
@@ -1592,6 +1676,9 @@ class Ui_manage_labs1(Ui_manage_labs):
             due_dates.append(dui.third_subm_date_time.dateTime().toTime_t())
             due_location = dui.lab_path.text()
             self.due_date_creator(due_location, due_dates)
+            year, semester = self.main_lab_path.split('/')[-1].split('_')
+            ltype, _, lab_num = self.selected_lab_name.split('_')
+            register_lab_in_semester(ltype, lab_num, year, semester, due_dates)
         self.create_due_dates_but.setEnabled(True)
 
     # noinspection PyMethodMayBeStatic
@@ -1617,6 +1704,53 @@ class Ui_manage_labs1(Ui_manage_labs):
         export_pdf()
         self.export_but.setText('Export pdfs')
         self.export_but.setEnabled(True)
+
+
+def get_grading_period(lid):
+    # should comput correct grading period and return the due date in Unix timestamp format
+    import time
+    # due_timestamps = [int(f.split('_')[2]) for f in due_files]
+
+
+    due_timestamps1 = get_due_date_by_labid(lid)
+    import_timestamps1 = get_import_dates_by_labid(lid)
+    for i, ts in enumerate(import_timestamps1):
+        if ts is None:
+            cur_check = i
+            break
+    i = 0
+    while i > len(due_timestamps1) and due_timestamps1[i] < import_timestamps1[cur_check-1]:
+        i += 1
+
+    if i == 0:
+        from_time = 0
+        to_time = due_timestamps1[i]
+    elif i > len(due_timestamps1):
+        from_time = due_timestamps1[i-1]
+        to_time = int(time.time())
+    else:
+        from_time = due_timestamps1[i - 1]
+        to_time = due_timestamps1[i]
+    cur_check_num = i+1
+
+
+    #
+    # check_files = [int(f.split('_')[2]) for f in os.listdir(dir) if 'check_' in f]
+    # if len(check_files) > 0:
+    #     if len(check_files) >= 4:
+    #         cur_check_num = 0
+    #         from_time = 0
+    #         to_time = 0
+    #     else:
+    #         cur_check_num = len(check_files) + 1           # 1 + 1
+    #         from_time = due_timestamps[cur_check_num - 2]  # 0 => after first due date
+    #         to_time = due_timestamps[cur_check_num - 1]    # 1 => before second due date
+    # else:
+    #     from_time = 0
+    #     to_time = due_timestamps[0]
+    #     cur_check_num = 1
+    current_timestampt = int(time.time())
+    return cur_check_num, from_time, to_time, current_timestampt
 
 
 class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):
