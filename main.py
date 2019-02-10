@@ -249,7 +249,7 @@ class Grader:
         self.lid = get_labid_in_schedule(get_lab_id(self.lab_type, self.lab_num), self.year, self.semester)
         self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = get_empty_grades_by_lid(self.lid, self.attempt)
 
-        atime = get_grading_period(self.lid)
+        atime = get_grading_period(self.lid, cur_only=True)
         self.time_from = atime[1]
         self.time_to = atime[2]
         self.time_cur = atime[3]
@@ -289,7 +289,8 @@ class Grader:
                 good_sids.append(self.stud_ids[i])
                 good_tss.append(self.timestamps[i])
             else:
-                gen_filenotfound_resp(self.grade_ids[i], stud_path, self.circ_file_name, self.grader)
+                next_date = time_to_str_with_tz(self.time_to + self.time_to - self.time_from)
+                gen_filenotfound_resp(self.grade_ids[i], stud_path, self.circ_file_name, self.grader, self.attempt, next_date)
         return good_tss, self.stud_ids, good_ids, paths_with_files_list
 
 
@@ -1089,7 +1090,7 @@ class UiMainWindow1(Ui_mainWindow):
         self.but_create_report.setDisabled(True)
         self.but_create_report.setText('Generating..')
         self.but_create_report.repaint()
-        from generate import generate_answers
+        # from generate import generate_answers
         # (resubmit_num, dir_name, lab_type, lab_num)
         if hasattr(self, 'grader_ref'):
             loc_settings = settings_db_read_settings()[1]
@@ -1514,9 +1515,11 @@ class Ui_manage_labs1(Ui_manage_labs):
             self.import_but.setText('Importing..')
             self.import_but.repaint()
 
-            due_file = self.check_for_due_dates(self.selected_path)
-            if len(due_file) < 4:
+            # due_file = self.check_for_due_dates(self.selected_path)
+            if False:
+            # if len(due_file) < 4:
                 self.status_bar.setText('Create due dates !')
+                self.import_but.setText('Import labs')
                 self.import_but.setEnabled(True)
                 return False
             else:
@@ -1527,6 +1530,11 @@ class Ui_manage_labs1(Ui_manage_labs):
                 year, semester = self.main_lab_path.split('/')[-1].split('_')
                 ltype, _, lab_num = self.selected_lab_name.split('_')
                 lid = get_labid_in_schedule(get_lab_id(ltype, int(lab_num)), year, semester)
+                if lid is None:
+                    self.status_bar.setText('Create due dates ! Lab is not initialised in lab_schedule')
+                    self.import_but.setText('Import labs')
+                    self.import_but.setEnabled(True)
+                    return False
                 current_check, prev_due, next_due, current_timestamp = get_grading_period(lid)
 
                 if current_check > 4:
@@ -1626,13 +1634,13 @@ class Ui_manage_labs1(Ui_manage_labs):
                     init_new_lab(id_to_classId[parts[0]], lid, current_check, subm_int, extraction_dir)
                     imported_files_counter += 1
 
-                cp2(self.selected_path + due_file[current_check-1], paths_to_grading_dir)
+                # cp2(self.selected_path + due_file[current_check-1], paths_to_grading_dir)
 
-                check_filename = paths_to_grading_dir + 'check_' + str(current_check) + '_' + str(current_timestamp)
-                with open(check_filename, 'w'): pass
-                save_grade_and_report(lid, att=current_check)
+                # check_filename = paths_to_grading_dir + 'check_' + str(current_check) + '_' + str(current_timestamp)
+                # with open(check_filename, 'w'): pass
+                gen_report(lid, att=current_check)
 
-                cp2(check_filename, self.selected_path)
+                # cp2(check_filename, self.selected_path)
 
                 self.import_but.setEnabled(True)
                 self.import_but.setText('Import labs')
@@ -1706,21 +1714,25 @@ class Ui_manage_labs1(Ui_manage_labs):
         self.export_but.setEnabled(True)
 
 
-def get_grading_period(lid):
+def get_grading_period(lid, cur_only=False):
     # should comput correct grading period and return the due date in Unix timestamp format
     import time
     # due_timestamps = [int(f.split('_')[2]) for f in due_files]
 
-
+    current_timestamp = int(time.time())
     due_timestamps1 = get_due_date_by_labid(lid)
     import_timestamps1 = get_import_dates_by_labid(lid)
     for i, ts in enumerate(import_timestamps1):
         if ts is None:
-            cur_check = i
+            cur_check = max(0, i-1)
             break
     i = 0
-    while i > len(due_timestamps1) and due_timestamps1[i] < import_timestamps1[cur_check-1]:
-        i += 1
+    if cur_check:
+        while i < len(due_timestamps1) and import_timestamps1[i] is not None and due_timestamps1[i] < current_timestamp and due_timestamps1[i] < import_timestamps1[cur_check-1]:
+            i += 1
+
+    if cur_only:
+        i = max(0, i-1)
 
     if i == 0:
         from_time = 0
@@ -1731,7 +1743,9 @@ def get_grading_period(lid):
     else:
         from_time = due_timestamps1[i - 1]
         to_time = due_timestamps1[i]
+
     cur_check_num = i+1
+    # cur_check += 1
 
 
     #
@@ -1749,8 +1763,8 @@ def get_grading_period(lid):
     #     from_time = 0
     #     to_time = due_timestamps[0]
     #     cur_check_num = 1
-    current_timestampt = int(time.time())
-    return cur_check_num, from_time, to_time, current_timestampt
+
+    return cur_check_num, from_time, to_time, current_timestamp
 
 
 class Ui_Create_dates_dialog1(Ui_Create_dates_dialog):

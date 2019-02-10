@@ -405,20 +405,23 @@ def import_previous_grades_into_db(year, semester, db_name='./grades.sqlite3', f
         con.commit()
 
 
-def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, db_name='./grades.sqlite3'):
-    resp_text = 'File with name "{}" was not found'.format(corr_file)
+def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, att=None, next_date=None, db_name='./grades.sqlite3'):
+    resp_text = 'file with name "{}" was not found.</br>'.format(corr_file)
     file_found = os.listdir(stud_path)
     potential_files = list()
     for file in file_found:
         if file not in ['grade.txt', 'penalty.txt', 'responce.txt', 'tech_info.txt', ]:
             potential_files.append(file)
     if potential_files:
-        resp_text += '\nNext files|folders were found:\n'
+        resp_text += '\nNext files|folders were found:</br>\n'
     for file in potential_files:
         if os.path.isdir(os.path.join(stud_path, file)):
-            resp_text += file + ' - directory.\n'
+            resp_text += file + ' - directory.</br>\n'
         else:
-            resp_text += file + ' - regular file.\n'
+            resp_text += file + ' - regular file.</br>\n'
+
+    if att and att < 4 and next_date:
+        resp_text += 'Please submit your file by next due date ({}).</br>\n'.format(next_date)
 
     if not os.path.isfile(db_name):
         raise Exception("DB not found")
@@ -523,11 +526,11 @@ def update_lab_submissions_paths(db_name, repository_root, year, semester):
 def get_empty_grades_by_lid(lab_id, att, db_name='./grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
-        result = cur.execute("SELECT submitted, class_id, id, lab_path FROM grades WHERE lab=? AND attempt=? AND graded=NULL", (lab_id, att))
+        result = cur.execute("SELECT submitted, class_id, id, lab_path FROM grades WHERE lab=? AND attempt=? AND graded is NULL", (lab_id, att))
         try:
             subm, class_id, lab_id, lab_path = zip(*result.fetchall())
         except Exception as e:
-            print(e)
+            # print(e)
             return None, None, None, None
 
     return subm, class_id, lab_id, lab_path
@@ -736,7 +739,8 @@ def get_labid_in_schedule(lid, year, semester, db_name='./grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute('SELECT id FROM lab_schedule WHERE lab_id=? AND year=? AND semester=?', (lid, year, semester))
-    return int(result.fetchone()[0])
+        fetched_red = result.fetchone()
+    return int(fetched_red[0]) if fetched_red is not None else None
 
 
 def get_due_date_by_labid(lid_sem, att=None, db_name='./grades.sqlite3'):
