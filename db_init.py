@@ -431,25 +431,25 @@ def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, att=None, next_d
         con.commit()
 
 
-def get_resp_and_grade(lab_id, db_name='./grades.sqlite3'):
+def get_resp_and_grade(grade_id, db_name='./grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
-        result = cur.execute("SELECT grade, grader_comment, graded FROM grades WHERE id=?", (lab_id,))
-        grade, resp, graded = result.fetchone()
+        result = cur.execute("SELECT grade, grader_comment, extra_comment, graded FROM grades WHERE id=?", (grade_id,))
+        grade, resp, uresp, graded = result.fetchone()
 
-    return grade, resp, graded
+    return grade, resp, uresp, graded
 
 
-def get_prev_resp(lab_id, class_id, lab_name, db_name='./grades.sqlite3'):
+def get_prev_resp(grade_id, class_id, lab_id, db_name='./grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
-        result = cur.execute("SELECT grader_comment FROM grades WHERE class_id=? AND lab=? AND id!=?", (class_id, lab_name, lab_id))
+        result = cur.execute("SELECT grader_comment, extra_comment FROM grades WHERE class_id=? AND lab=? AND id<?", (class_id, lab_id, grade_id))
         res = result.fetchall()
     if len(res) == 0:
         return ''
     else:
-        responces = zip(*res)
-        return '\n'.join(responces)
+        gresp, uresp = zip(*res)
+        return '\n'.join(('{} :\n{}'.format(gresp[i], uresp[i]) for i in range(len(gresp))))
 
 
 def save_a_grade_to_db(grade_id, grade, grader_comment, extra_comment, grader_name, graded=True, pass_fail=True, db_name='./grades.sqlite3'):
@@ -468,6 +468,7 @@ def save_a_grade_to_db(grade_id, grade, grader_comment, extra_comment, grader_na
 #             print(e)
 #             return None, None, None
 #     return lab_id, lab_type, lab_num
+
 
 def init_new_lab(stud_id, lab_name, att, submitted, lab_path, db_name='./grades.sqlite3'):
     if not os.path.isfile(db_name):
@@ -549,7 +550,6 @@ def get_all_grades_by_lid(lab_id, att, db_name='./grades.sqlite3'):
     return subm, class_id, lab_id, lab_path
 
 
-
 def reconstruct_grades_and_comments(db_name='./grades.sqlite3'):
     lab_id, lab_path = get_empty_grades(db_name)
     updated_grades = list()
@@ -599,7 +599,7 @@ def generate_final_grades(db_name, year, semester):
 
         labs = list()
         for sid in ids.values():  # using JOIN here will add too much extra data
-            result = cur.execute('SELECT lab, max(grade * (select percent from penalties where id=GRADES.attempt)/100) '
+            result = cur.execute('SELECT lab, MAX(grade * (select percent from penalties where id=GRADES.attempt)/100) '
                             'FROM GRADES WHERE class_id=? and attempt > 0 group by lab order by lab', (str(sid),))
             labs.append(result.fetchall() )
 
@@ -612,6 +612,44 @@ def generate_final_grades(db_name, year, semester):
     df_grades = pd.DataFrame(dict(zip(ids.keys(), labs)))
     # id_list = list(ids.keys())
     # a = id_list[list(ids.values()).index(class_id)]
+
+
+def get_max_grade_for_lab(lid, year, semester, db_name='./grades.sqlite3'):
+    with lite.connect(db_name) as con:
+        cur = con.cursor()
+        result = cur.execute('SELECT e.pipeline_id as pipid, IFNULL(MAX(k.final_grade), 0) as grade '
+                             'FROM class e '
+                             'LEFT OUTER JOIN '
+                             '  (SELECT d.pipeline_id, c.grade*f.percent/100 AS final_grade '
+                             '   FROM grades c '
+                             '     JOIN class d ON d.id = c.class_id '
+                             '     JOIN penalties f ON f.id = c.attempt '
+                             '   WHERE c.lab = ? ) k '
+                             'ON e.pipeline_id = k.pipeline_id '
+                             'WHERE year=? AND semester=? '
+                             'GROUP BY e.pipeline_id '
+                             'ORDER BY e.pipeline_id ', (lid, int(year), int(semester)))
+        return result.fetchall()
+
+
+def get_grades_by_lab_and_att(lid, att, db_name='./grades.sqlite3'):
+    with lite.connect(db_name, detect_types=lite.PARSE_COLNAMES) as con:
+        cur = con.cursor()
+        result = cur.execute('select a.due_date_{0} as due_date, a.imported_{0} as import_date, '
+                             'b.type, b.num, b.max_grade, '
+                             'c.id as grade_id, c.submitted, c.graded, c.grade, c.pass_fail, c.grader_comment, c.extra_comment, c.grader, c.lab_path, '
+                             'd.pipeline_id, e.first_name, e.second_name, f.percent, c.grade*f.percent/100 as final_grade '
+                             'from lab_schedule a '
+                             'join lab_names b on a.lab_id=b.id '
+                             'join grades c on c.lab=a.id '
+                             'join class d on d.id=c.class_id '
+                             'join students e on e.pipeline_id=d.pipeline_id '
+                             'join penalties f on f.id=c.attempt '
+                             'where c.attempt={0} AND a.id=? ORDER BY d.pipeline_id'.format(int(att)), (lid,))
+        info_tup = result.fetchall()
+        info_desc = result.description
+    return info_tup, info_desc
+
 
 def get_lab_filename(lab_id, db_name='./grades.sqlite3'):
     with lite.connect(db_name) as con:
@@ -630,9 +668,11 @@ def get_lab_max_value(lab_id, db_name='./grades.sqlite3'):
         return int(result.fetchone()[0])
     return None
 
+
 def get_full_path(paths, local):
     import os
     return os.path.expanduser(paths[1]) + str(local[1]) + "_" + str(local[2])
+
 
 def sync_files(self=None):
     import subprocess

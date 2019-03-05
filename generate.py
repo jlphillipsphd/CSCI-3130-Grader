@@ -6,7 +6,7 @@ from PyQt5.QtCore import QLocale
 from PyQt5.QtCore import QDateTime, Qt
 import sqlite3 as lite
 import multiprocessing as mp
-from db_init import get_pipids_in_class_by_year_semester, commit_gen_report
+from db_init import get_pipids_in_class_by_year_semester, commit_gen_report, get_grades_by_lab_and_att, get_max_grade_for_lab
 QLocale.setDefault(QLocale(QLocale.English))
 
 
@@ -112,13 +112,15 @@ def create_html_pdf_report2(lab_dict):
         else:
             stud_report.write(lab_dict['grader_comment'])
         if lab_dict['extra_comment'] is not None and len(lab_dict['extra_comment']) > 0:
-            stud_report.write('\nExtra comment:'.format(lab_dict['extra_comment']))
+            stud_report.write('<br/>\nExtra comment: {}'.format(lab_dict['extra_comment']))
 
         stud_report.write("</i></p>\n"
                           "<p>According to the comment above, next grade was assigned: {} of {} <br/>\n"
                           " Your final grade is computed as {}*{:.1f}=<b>{}</b> of {} <br/>\n"
                           "".format(lab_dict['final_grade'], lab_dict['max_grade'], lab_dict['grade'], lab_dict['percent']/100, lab_dict['final_grade'], lab_dict['max_grade']))
-        stud_report.write('This report was generated {} </p>'.format(QDateTime.currentDateTime().toString(Qt.DefaultLocaleLongDate)))
+        if lab_dict['grade'] == 0:
+            stud_report.write('<br/>Don\'t forget to resubmit it by {} <br/><br/>\n'.format(time_to_str_with_tz(lab_dict['due_date'] + 604800)))  # one extra week
+        stud_report.write('This report was generated {} </p>\n'.format(QDateTime.currentDateTime().toString(Qt.DefaultLocaleLongDate)))
 
         stud_report.writelines(bot_part)
 
@@ -388,21 +390,7 @@ def create_not_submitted(stud_id, lab_type, lab_num, dir_name):
 
 def generate_answers3(lid, att, year, semester, db_name='./grades.sqlite3'):
     all_ids = get_pipids_in_class_by_year_semester(year, semester)
-    with lite.connect(db_name, detect_types=lite.PARSE_COLNAMES) as con:
-        cur = con.cursor()
-        result = cur.execute('select a.due_date_{0} as due_date, a.imported_{0} as import_date, '
-                             'b.type, b.num, b.max_grade, b.name, '
-                             'c.id as grade_id, c.submitted, c.graded, c.grade, c.pass_fail, c.grader_comment, c.extra_comment, c.grader, c.lab_path, '
-                             'd.pipeline_id, e.first_name, e.second_name, f.percent, c.grade*f.percent/100 as final_grade '
-                             'from lab_schedule a '
-                             'join lab_names b on a.lab_id=b.id '
-                             'join grades c on c.lab=a.id '
-                             'join class d on d.id=c.class_id '
-                             'join students e on e.pipeline_id=d.pipeline_id '
-                             'join penalties f on f.id=c.attempt '
-                             'where c.attempt={0} AND a.id=? ORDER BY d.pipeline_id'.format(int(att)), (lid,))
-        info_tup = result.fetchall()
-        info_desc = result.description
+    info_tup, info_desc = get_grades_by_lab_and_att(lid, att)
     col_names = [elem[0] for elem in info_desc]
     main_list = list()
     for tup in info_tup:
@@ -450,13 +438,20 @@ def generate_answers3(lid, att, year, semester, db_name='./grades.sqlite3'):
         r1.wait()
         r2.wait()
 
-    with open(os.path.join(dir_name, 'grades.csv'), 'w') as grades_file:
-        grades_file.write("Closed Lab {0}, Closed Lab {0}\n".format(lab_num))
+    with open(os.path.join(dir_name, '{}_lab_{}_grades.csv'.format(lab_num, lab_type)), 'w') as grades_file:
+        grades_file.write("{1} Lab {0}, {1} Lab {0}\n".format(lab_num, lab_type))
         for stud_id in all_ids:
             if stud_id not in not_subm_ids:
-                grades_file.write("{:s}, {:d} \n".format(stud_id, int(grade_dict[stud_id])))
+                grades_file.write("{:s}, {:d}\n".format(stud_id, int(grade_dict[stud_id])))
             else:
-                grades_file.write("{:s}, {:d} \n".format(stud_id, 0))
+                grades_file.write("{:s}, {:d}\n".format(stud_id, 0))
+
+
+    best_grade_list = get_max_grade_for_lab(lid, year, semester)
+    with open(os.path.join(dir_name, '{}_lab_{}_grades_best_so_far.csv'.format(lab_num, lab_type)), 'w') as grades_file:
+        grades_file.write("{1} Lab {0}, {1} Lab {0}\n".format(lab_num, lab_type))
+        for stud_tup in best_grade_list:
+            grades_file.write('{}, {}\n'.format(stud_tup[0], stud_tup[1]))
 
     # for elem in main_list:
     #     create_html_pdf_report2(elem)

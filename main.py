@@ -221,20 +221,20 @@ class Grader:
         root, dirs, files = os.walk(self.working_dir).__next__()
         files.sort()
         # check_file = files[0]  # not used at this time
-        if len(files) < 1:
-            raise Exception("No due files ? Extra files in working directory ?")
-        due_file = files[1] # TODO: change this to a better design.
+        # if len(files) < 1:
+        #     raise Exception("No due files ? Extra files in working directory ?")
+        # due_file = files[1] # TODO: change this to a better design. - Already changed
 
         self.lab_type = self.working_dir.split('/')[-2].split('_')[0]
         self.lab_num = int(self.working_dir.split('/')[-2].split('_')[2])
         self.attempt = int(self.working_dir.split('/')[-2].split('_')[3])
 
         if self.lab_type == 'Closed':
-            self.lab_id = 'CLA' + str(self.lab_num)
+            self.lab_id = 'CLA{}'.format(self.lab_num)
             # self.lab_max_grade = 10
         else:  # Open
             # self.lab_max_grade = 20
-            self.lab_id = 'OLA' + str(self.lab_num)
+            self.lab_id = 'OLA{}'.format(self.lab_num)
 
         self.lab_max_grade = get_lab_max_value(self.lab_id)
 
@@ -260,10 +260,11 @@ class Grader:
 
         if self.lab_paths is not None and len(self.lab_paths) > 0:
             self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = self.check_files()
-        else:
+
+        if self.lab_paths is None or len(self.lab_paths) == 0:  # if there are no ungraded labs - display all labs
             self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = get_all_grades_by_lid(self.lid, self.attempt)
 
-        self.grades = [self.lab_max_grade]*len(self.grade_ids)
+        # self.grades = [self.lab_max_grade]*len(self.grade_ids)
         # self.stud_ids = dirs
         # self.stud_ids = list()
         # self.timestamps = list()
@@ -289,9 +290,15 @@ class Grader:
                 good_sids.append(self.stud_ids[i])
                 good_tss.append(self.timestamps[i])
             else:
-                next_date = time_to_str_with_tz(self.time_to + self.time_to - self.time_from)
+                if self.attempt > 1:
+                    next_date = time_to_str_with_tz(self.time_to + self.time_to - self.time_from)
+                else:
+                    next_date = time_to_str_with_tz(self.time_to + 604800)  # 604800 - one week in unix time, this line needs corrections for case when you skip a week
                 gen_filenotfound_resp(self.grade_ids[i], stud_path, self.circ_file_name, self.grader, self.attempt, next_date)
-        return good_tss, self.stud_ids, good_ids, paths_with_files_list
+        # self.grade_ids = good_ids
+        # self.stud_ids = good_sids
+        # self.timestamps = good_tss
+        return good_tss, good_sids, good_ids, paths_with_files_list
 
 
     def get_stud_id(self):
@@ -419,7 +426,7 @@ class Grader:
         # self.read_prev_resp()
 
     def read_resp2(self):
-        self.final_grade, self.resp_text, graded = get_resp_and_grade(self.grade_ids[self.cur_idx])
+        self.final_grade, self.resp_text, self.user_comment, graded = get_resp_and_grade(self.grade_ids[self.cur_idx])
         if graded is None:
             self.final_grade = self.lab_max_grade
             self.resp_text = 'I did not find any errors. Good job!'
@@ -428,7 +435,7 @@ class Grader:
         return graded
 
     def read_prev_resp2(self):
-        self.previous_responses = get_prev_resp(self.grade_ids[self.cur_idx], self.stud_ids[self.cur_idx], self.lab_id)
+        self.previous_responses = get_prev_resp(self.grade_ids[self.cur_idx], self.stud_ids[self.cur_idx], self.lid)
 
     def read_prev_resp(self):
         """
@@ -499,7 +506,7 @@ class Grader:
         :return: nothing
         """
         self.final_grade = 0
-        self.resp_text = 'Your lab was marked as wrong. You should fix errors listed below and resubmit it.'
+        self.resp_text = 'your lab was marked as wrong. You should fix errors listed below and resubmit it.'
         self.resp_len = len(self.resp_text)
 
     def save_grade(self):
@@ -598,6 +605,7 @@ class UiMainWindow1(Ui_mainWindow):
         self.popular_answers.setDisabled(True)
         self.input_final_grade.setDisabled(True)
         self.checkB_wrong.setChecked(False)
+        self.check_autosave.setDisabled(True)
         self.input_current_id.setText('')
 
     def enable_fields(self):
@@ -610,6 +618,7 @@ class UiMainWindow1(Ui_mainWindow):
         # self.input_response_browser.setEnabled(True)
         self.checkB_wrong.setEnabled(True)
         self.input_final_grade.setEnabled(True)
+        self.check_autosave.setEnabled(True)
 
         # self.input_subtract.setEnabled(True)
         # self.but_regrade.setEnabled(True)
@@ -741,7 +750,7 @@ class UiMainWindow1(Ui_mainWindow):
         self.input_final_grade.setText(str(self.grader_ref.final_grade))
         self.input_log_browser.setText(self.grader_ref.global_log)
         self.input_response_browser.setPlainText(self.grader_ref.resp_text)
-        self.input_response_browser_user.clear()
+        self.input_response_browser_user.setPlainText(self.grader_ref.user_comment)
         self.checkB_input_pin_status.setChecked(False)
         self.checkB_output_pin_status.setChecked(False)
         self.popular_answers.setCurrentIndex(-1)
@@ -789,8 +798,8 @@ class UiMainWindow1(Ui_mainWindow):
         self.but_regrade.setText('GRADE')
         if self.check_autosave.isChecked() and self.grader_ref.cur_idx >= 0:
             self.save_all()
-        else:
-            self.check_autosave.setDisabled(True)
+        # else:
+        #     self.check_autosave.setDisabled(True)
         next_idx = self.grader_ref.next_circ()
         # self.check_file()
         self.show_stat()
@@ -1722,22 +1731,23 @@ def get_grading_period(lid, cur_only=False):
     current_timestamp = int(time.time())
     due_timestamps1 = get_due_date_by_labid(lid)
     import_timestamps1 = get_import_dates_by_labid(lid)
+    cur_check = len(due_timestamps1)
     for i, ts in enumerate(import_timestamps1):
         if ts is None:
-            cur_check = max(0, i-1)
+            cur_check = i
             break
     i = 0
     if cur_check:
         while i < len(due_timestamps1) and import_timestamps1[i] is not None and due_timestamps1[i] < current_timestamp and due_timestamps1[i] < import_timestamps1[cur_check-1]:
             i += 1
 
-    if cur_only:
+    if cur_only:  # neede for CLA2-2
         i = max(0, i-1)
 
     if i == 0:
         from_time = 0
         to_time = due_timestamps1[i]
-    elif i > len(due_timestamps1):
+    elif i > len(due_timestamps1)-1:
         from_time = due_timestamps1[i-1]
         to_time = int(time.time())
     else:
