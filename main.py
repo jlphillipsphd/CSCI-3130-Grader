@@ -15,6 +15,8 @@ import zipfile
 from dateutil import tz
 from datetime import datetime
 import datetime
+import difflib
+import math
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtCore import QDateTime, QLocale, QTimeZone
@@ -28,6 +30,7 @@ from manage_labs import Ui_manage_labs
 from db_init import *
 from simple_dialog import Ui_Dialog
 from generate import *
+import xml.etree.ElementTree as ET
 
 
 QLocale.setDefault(QLocale(QLocale.English))
@@ -79,16 +82,14 @@ def read_settings(db_name = 'settings.sqlite3' ):
 
 class CircFile:
     # not used yet
-    # class circ_type:
-    #     def __init__(self, name):
-    #         self.name = name
-    #         self.input_pins = None
-    #         self.output_pins = None
-    #         self.input_pins = list()
-    #         self.output_pins = list()
+    class circ_type:
+        def __init__(self, name):
+            self.name = name
+            self.input_pins = list()
+            self.output_pins = list()
 
     class PinType:
-        def __init__(self, name, iotype, facing):
+        def __init__(self, name, iotype, facing=None):
             self.name = name
             self.type = iotype
             self.facing = facing
@@ -167,6 +168,60 @@ class CircFile:
             raise Exception('Error in pin parsing(clean data)')
 
         return input_pins, output_pins, other_pins
+
+
+    def get_parsed_pins2(self, what_to_grade):
+
+        tree = ET.parse(self.filename)
+        root = tree.getroot()
+        arr=list()
+        for child in root:
+            # print(child.tag)
+            if child.tag == 'circuit':
+                arr.append(child)
+            # if child.attrib["name"] == what_to_grade:
+            #     a = child
+            #     b =1
+
+        all_circs = list()
+        good_arr = list()
+        for node in arr:
+            if node.get('name').upper() in what_to_grade:
+                good_arr.append(node)
+                circ_instance = self.circ_type(node.get('name'))
+                all_circs.append(circ_instance)
+                # print(list(node)[0].items()[0][1])
+
+        all_pins = list()
+        for elem in good_arr:
+            pins = list()
+            for child in elem.findall('comp'):
+                if child.get('name') == 'Pin':
+                    pins.append(child)
+                    # print(child.tag, child.attrib)
+            all_pins.append(pins)
+
+
+        clean_all_pins = list()
+        for pins in all_pins:
+            clean_data = list()
+            for pin in pins:
+                name = '0'
+                type = '0'
+                for elem in list(pin):
+                    if elem.get('name') in ['output', 'input', 'tristate']:
+                        type = elem.get('name')
+                    elif elem.get('name') == 'label':
+                        name = elem.get('val')
+                clean_data.append(self.PinType(name, type))
+            clean_all_pins.append(clean_data)
+        for i in range(len(clean_all_pins)):
+            for pin in clean_all_pins[i]:
+                if pin.type == 'output':
+                    all_circs[i].output_pins.append(pin.name)
+                else:
+                    all_circs[i].input_pins.append(pin.name)
+        return all_circs
 
 
 class Grader:
@@ -258,6 +313,16 @@ class Grader:
         self.time_to_qt = QDateTime.fromSecsSinceEpoch(self.time_to)
         self.time_cur_qt = QDateTime.fromSecsSinceEpoch(self.time_cur)
 
+        if self.lab_num > 8 and self.lab_type == 'Closed':
+            if self.lab_num == 9:
+                self.what_to_grade = ['PC_BUS', 'AR_LD', 'PC_LD', 'PC_INC', 'DR_LD', 'DR_BUS']
+            elif self.lab_num == 10:
+                self.what_to_grade = ["R_LD", "R_BUS", "S_LD", "ACC_CLR", "ACC_LD", "ACC_BUS", "ALU_SEL"]
+            elif self.lab_num == 11:
+                self.what_to_grade = ["Z_LD", "OUTR_LD", "RAM_RW", "RAM_EN", "IR_LD", "SC_CLR"]
+            circ = CircFile('/home/vanya/Documents/3130_labs/2018_2/PLDs.circ')
+            self.all_my_circuits = circ.get_parsed_pins2(self.what_to_grade)
+
         if self.lab_paths is not None and len(self.lab_paths) > 0:
             self.timestamps, self.stud_ids, self.grade_ids, self.lab_paths = self.check_files()
 
@@ -283,12 +348,16 @@ class Grader:
         good_ids = list()
         good_sids = list()
         good_tss = list()
+
         for i, stud_path in enumerate(self.lab_paths):
-            if os.path.exists(os.path.join(stud_path, self.circ_file_name)):
+            cur_path = os.path.join(stud_path, self.circ_file_name)
+            if os.path.exists(cur_path):
                 paths_with_files_list.append(stud_path)
                 good_ids.append(self.grade_ids[i])
                 good_sids.append(self.stud_ids[i])
                 good_tss.append(self.timestamps[i])
+                if self.lab_num > 8 and self.lab_type == 'Closed':
+                    self.precheck_PLDs(i)
             else:
                 if self.attempt > 1:
                     next_date = time_to_str_with_tz(self.time_to + self.time_to - self.time_from)
@@ -299,6 +368,70 @@ class Grader:
         # self.stud_ids = good_sids
         # self.timestamps = good_tss
         return good_tss, good_sids, good_ids, paths_with_files_list
+
+    def get_stud_circ_ind(self, student_circuits, circ_to_grade):
+        for stud_circ in student_circuits:
+            if stud_circ.name.upper() == circ_to_grade.upper():
+                return student_circuits.index(stud_circ)
+        for stud_circ in student_circuits:
+            print(stud_circ.name.upper())
+        return -1
+
+    def precheck_PLDs(self, stud_ind):
+        file = os.path.join(self.lab_paths[stud_ind], self.circ_file_name)
+
+        student_circuits = CircFile(file).get_parsed_pins2(self.what_to_grade)
+        errors = 0
+
+        out_str = '<br> Next part was generated by automatic grader that I wrote several years ago.' \
+                  'If you are not agree with something or suspect an error - please send me a message.<br>With this grading approach you cat get nonzero grade ' \
+                  'even if not everything was correct.<br>'
+        for circ_to_grade in self.what_to_grade:
+            for good_circ in self.all_my_circuits:
+                if good_circ.name.upper() == circ_to_grade.upper():
+                    cur_ind = self.get_stud_circ_ind(student_circuits, circ_to_grade)
+                    out_str += '<br>'
+                    if cur_ind == -1:
+                        out_str += '<font color="red">{}  NOT FOUND!<br> </font>'.format(circ_to_grade)
+                        errors += 1
+                    else:
+                        check_pins = student_circuits[cur_ind].input_pins
+                        for i in range(len(check_pins)):
+                            if check_pins[i][0].lower() != 'c':
+                                # print(check_pins[i])
+                                if len(check_pins[i][1:]) > 0:
+                                    try:
+                                        pos = None
+                                        for ch in check_pins[i]:
+                                            if not ch.isalpha():
+                                                pos = check_pins[i].index(ch)
+                                                break
+                                        num = int(check_pins[i][pos:])
+                                    except Exception as e:
+                                        print(e)
+                                        continue
+                                    check_pins[i] = check_pins[i][0:1] + str(num)
+                        student_circuits_sorted = sorted(check_pins)
+                        good_circ_sorted = sorted(good_circ.input_pins)
+                        sm = difflib.SequenceMatcher(None, student_circuits_sorted, good_circ_sorted)
+                        res_ratio = sm.ratio()
+
+                        if res_ratio > 0.99:
+                            out_str += '<font color="green"> {} : PERFECT MATCH!<br> </font>'.format(circ_to_grade)
+                        elif res_ratio > 0.15:
+                            out_str += '{} :Great news : you match ratio is {:.1%} (>75%)<br>{} : <b>FOUND</b> {}  <br>{} : <b>EXPECTED</b> {} <br>'\
+                                .format(circ_to_grade, res_ratio, circ_to_grade, ' '.join(student_circuits_sorted), circ_to_grade, ' '.join(good_circ_sorted))
+                            errors += 1
+                        else:
+                            out_str += '<font color="red">{} Bad news : you match ratio is only', \
+                                       '{:.1%} - this means that you have to significantly change your circuit. <br> ' \
+                                       'Please send me a message if you need some advice.<br> </font>'.format(circ_to_grade, res_ratio)
+                            errors += 1
+
+        final_grade = math.ceil(10 * (len(self.what_to_grade) - errors) / len(self.what_to_grade))
+        # out_str += '<br> Bad grade confidence: ' + conf + ' (this is for Ivan)<br>' + '<br> Next part will be typed manually: <br>'
+        save_grade_and_report(self.grade_ids[stud_ind], final_grade, out_str, None, self.grader)
+        return final_grade, out_str
 
 
     def get_stud_id(self):
@@ -340,6 +473,7 @@ class Grader:
             # print(sys.exc_info()[0])
             raise
         # self.log_update('Done checking: ' + self.filename)
+
 
     # noinspection PyMethodMayBeStatic
     def check_pins_facing(self, pins, corr_facing):
@@ -467,8 +601,8 @@ class Grader:
         # self.check_file(self.cur_idx)
         self.user_comment = ''
         graded = self.read_resp2()
-        if graded:
-            self.read_prev_resp2()
+        # if graded:
+        self.read_prev_resp2()
         # if self.check_circ_exist():
         #     self.read_resp()
         self.stud_id = self.stud_ids[self.cur_idx]
@@ -852,6 +986,8 @@ class UiMainWindow1(Ui_mainWindow):
         """
         self.disable_fields()
         self.but_regrade.setText('regrade')
+        # if self.lab_num > 8 and self.lab_type == 'Closed':
+        #    self.precheck_PLDs(i, cur_path)
         self.show_stat()
         # self.grader_ref.check_file()
         # if self.grader_ref.check_circ_exist():
@@ -867,10 +1003,15 @@ class UiMainWindow1(Ui_mainWindow):
         self.disable_fields()
         self.show_stat()
         # self.grader_ref.check_file()
-        if self.grader_ref.check_circ_exist():
-            self.input_response_browser.setPlainText('I did not find any errors. Good job!')
+        # if self.grader_ref.check_circ_exist():
+        if self.grader_ref.lab_num > 8 and self.grader_ref.lab_type == 'Closed':
+           self.grader_ref.final_grade, report = self.grader_ref.precheck_PLDs(self.grader_ref.cur_idx)
+           self.input_response_browser.setPlainText(report)
+        else:
             self.grader_ref.final_grade = self.grader_ref.lab_max_grade
-            self.input_final_grade.setText(str(self.grader_ref.final_grade))
+            self.input_response_browser.setPlainText('I did not find any errors. Good job!')
+
+        self.input_final_grade.setText(str(self.grader_ref.final_grade))
         self.enable_fields()
 
     def update_popular_answers(self):
@@ -1603,8 +1744,13 @@ class Ui_manage_labs1(Ui_manage_labs):
                 for file in reversed(selected_files):
                     zipped_file = zipfile.ZipFile(self.selected_path + file)
                     extraction_dir = paths_to_grading_dir + file.split('.')[0]
-                    zipped_file.extractall(paths_to_grading_dir + file.split('.')[0])
-                    zipped_file.close()
+                    try:
+                        zipped_file.extractall(paths_to_grading_dir + file.split('.')[0])
+                    except Exception as e:
+                        print(self.selected_path + file)
+                        print(e)
+                    finally:
+                        zipped_file.close()
                     parts = file.split('.')[0].split('-')
                     subm_int = int(extraction_dir.split('-')[-1])
                     # subm_time = datetime.utcfromtimestamp(subm_int).replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).strftime('%Y-%m-%d %H:%M:%S')

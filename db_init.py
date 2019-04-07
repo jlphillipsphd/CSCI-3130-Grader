@@ -3,7 +3,7 @@
 import sqlite3 as lite
 import os
 import os.path
-import pandas as pd
+# import pandas as pd
 
 SETTINGS_DB_NAME = 'settings.sqlite3'  # Default settings filename
 
@@ -704,6 +704,7 @@ def sync_files(self=None):
 
     for proc_elem in proc_arr:
         proc_elem.wait()
+
 
 def export_pdf(self=None):
     import subprocess
