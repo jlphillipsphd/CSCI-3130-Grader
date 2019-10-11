@@ -103,6 +103,9 @@ def grades_db_create(db_name, force=False):
         for i in range(1, 9):
             lab_names.append(('OLA' + str(i), 'Open', i, 20))
         lab_names.append(('OLA9', 'Open', 9, 100))
+        a = list(zip(*lab_names))
+        a.append(('initial_labs.circ', 'initial_labs.circ', 'seven_seg.circ', 'RSC.circ', 'custom_reg.circ', 'RSC.circ', 'RSC.circ', 'RSC.circ', 'PLDs.circ', 'PLDs.circ', 'PLDs.circ', '', '','', 'bin_converter.circ', 'mod_counter.circ', 'custom_reg.circ', 'RSC.circ', 'RSC.circ', 'ram2.txt', ''))
+        b = list(zip(*a))
 
         with lite.connect(db_name) as con:
             cur = con.cursor()
@@ -159,6 +162,7 @@ def grades_db_create(db_name, force=False):
                             attempt          INT     DEFAULT (0),
                             submitted        INTEGER,
                             graded           INTEGER,
+                            grader           VARCHAR,
                             grade            INTEGER NOT NULL
                                                      DEFAULT (0),
                             pass_fail        BOOLEAN NOT NULL
@@ -176,12 +180,20 @@ def grades_db_create(db_name, force=False):
             con.commit()
             print('Done.')
 
+            print("Creating penalties...")
+            cur.execute("""CREATE TABLE penalties (
+                            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                            percent   INTEGER NOT NULL
+                        );""")
+            con.commit()
+            print("Done.")
+
             print('Creating lab schedule...')
             cur.execute("""CREATE TABLE lab_schedule (
                             id         INTEGER PRIMARY KEY AUTOINCREMENT,
                             lab_id             REFERENCES lab_names (id),
                             year       INTEGER NOT NULL,
-                            semester   INTEGER REFERENCES semesters (semester) 
+                            semester   INTEGER REFERENCES semesters (semester)
                                                NOT NULL,
                             due_date_1 INTEGER,
                             due_date_2 INTEGER,
@@ -208,9 +220,14 @@ def grades_db_create(db_name, force=False):
             print('Done.')
             print('Filling labs...')
             cur.executemany('INSERT OR REPLACE INTO lab_names\
-                        (id, type, num, max_grade) VALUES (?, ?, ?, ?)', lab_names)
+                        (id, type, num, max_grade, mandatory_files) VALUES (?, ?, ?, ?, ?)', b)
             con.commit()
             print('Done.')
+            print('Filling penalties...')
+            cur.executemany('INSERT INTO penalties\
+                        (percent) VALUES (?)', [(100,), (90,), (70,), (50,)])
+            con.commit()
+            print("Done.")
             print('Vacuuming...')
 
             cur.execute('VACUUM;')
@@ -427,7 +444,7 @@ def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, att=None, next_d
         raise Exception("DB not found")
     with lite.connect(db_name) as con:
         cur = con.cursor()
-        cur.execute("UPDATE grades SET graded=strftime('%s','now'), pass_fail=FALSE, grader_comment=?, grader=? WHERE id=?", (resp_text, grader, lab_id))
+        cur.execute("UPDATE `grades` SET `graded`=strftime('%s','now'), `pass_fail`=?, `grader_comment`=?, `grader`=? WHERE `id`=?", (False, resp_text, grader, lab_id))
         con.commit()
 
 
@@ -742,7 +759,7 @@ def save_grade_and_report(grade_id, grade, report, user_comment, grader, db_name
         raise Exception("DB not found")
     with lite.connect(db_name) as con:
         cur = con.cursor()
-        cur.execute("UPDATE grades SET graded=strftime('%s','now'), pass_fail=TRUE, grade=?, grader_comment=?, extra_comment=?, grader=? WHERE id=?", (grade, report, user_comment, grader, grade_id))
+        cur.execute("UPDATE grades SET graded=strftime('%s','now'), pass_fail=?, grade=?, grader_comment=?, extra_comment=?, grader=? WHERE id=?", (True, grade, report, user_comment, grader, grade_id))
         con.commit()
 
 
