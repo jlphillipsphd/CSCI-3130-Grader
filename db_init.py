@@ -5,7 +5,7 @@ import os
 import os.path
 # import pandas as pd
 
-SETTINGS_DB_NAME = 'settings.sqlite3'  # Default settings filename
+SETTINGS_DB_NAME = './work/settings.sqlite3'  # Default settings filename
 
 
 def settings_db_create(db_name=SETTINGS_DB_NAME, force=False):
