@@ -1078,7 +1078,7 @@ class UiMainWindow1(Ui_mainWindow):
         self.sync_params_to_settings()
 
         from pathlib import Path
-        settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
+        settings_location = str(Path(os.path.expandvars(os.path.expanduser('./work/settings.sqlite3'))).absolute())
         if os.path.isfile(settings_location):
             paths, local = settings_db_read_settings()
             try:
@@ -1300,7 +1300,7 @@ class UiMainWindow1(Ui_mainWindow):
 
         if not self.manage_labs_but.isEnabled():
             from pathlib import Path
-            settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
+            settings_location = str(Path(os.path.expandvars(os.path.expanduser('./work/settings.sqlite3'))).absolute())
             if os.path.isfile(settings_location):
                 self.manage_labs_but.setEnabled(True)
 
@@ -1436,7 +1436,7 @@ class Ui_Create_settings_dialog(Ui_Settings):
         :return:
         """
         from pathlib import Path
-        settings_location = str(Path(os.path.expandvars(os.path.expanduser('./settings.sqlite3'))).absolute())
+        settings_location = str(Path(os.path.expandvars(os.path.expanduser('./work/settings.sqlite3'))).absolute())
         if not os.path.isfile(settings_location):
             if self.open_simple_dialog("Do you want to create settings database ?"):
                 if not settings_db_create(force=True):
