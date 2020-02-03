@@ -263,7 +263,7 @@ def load_student_list_into_grades_db(db_name, year, semester, filename='students
         register_students_in_class(ids, year, semester, db_name)
 
 
-def insert_students(ids, fname, lname, db_name='./grades.sqlite3'):
+def insert_students(ids, fname, lname, db_name='./work/grades.sqlite3'):
     """
     Takes students' info from the parameters and insert them into grades DB
     :param ids: pipeline ids
@@ -281,7 +281,7 @@ def insert_students(ids, fname, lname, db_name='./grades.sqlite3'):
         con.commit()
 
 
-def register_students_in_class(pipeline_ids, year, semester, db_name='./grades.sqlite3'):
+def register_students_in_class(pipeline_ids, year, semester, db_name='./work/grades.sqlite3'):
     """
 
     :param pipeline_ids:
@@ -299,7 +299,7 @@ def register_students_in_class(pipeline_ids, year, semester, db_name='./grades.s
         con.commit()
 
 
-def get_pipeline_ids(db_name='./grades.sqlite3'):
+def get_pipeline_ids(db_name='./work/grades.sqlite3'):
     """
 
     :param db_name:
@@ -316,7 +316,7 @@ def get_pipeline_ids(db_name='./grades.sqlite3'):
     return resut
 
 
-def get_ids_in_class_by_year_semester(year, semester, db_name='./grades.sqlite3'):
+def get_ids_in_class_by_year_semester(year, semester, db_name='./work/grades.sqlite3'):
     """
 
     :param year:
@@ -338,7 +338,7 @@ def get_ids_in_class_by_year_semester(year, semester, db_name='./grades.sqlite3'
     return pip_to_id, to_id_to_pip
 
 
-def import_previous_grades_into_db(year, semester, db_name='./grades.sqlite3', filename='./grades.xls'):
+def import_previous_grades_into_db(year, semester, db_name='./work/grades.sqlite3', filename='./work/grades.xls'):
     """
     Takes xls file with grades from previous semester(s) and loads all grades into DB.
     In case students are not found in the DB and xls file contains ids - loads them too
@@ -422,7 +422,7 @@ def import_previous_grades_into_db(year, semester, db_name='./grades.sqlite3', f
         con.commit()
 
 
-def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, att=None, next_date=None, db_name='./grades.sqlite3'):
+def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, att=None, next_date=None, db_name='./work/grades.sqlite3'):
     resp_text = 'file with name "{}" was not found.</br>'.format(corr_file)
     file_found = os.listdir(stud_path)
     potential_files = list()
@@ -448,7 +448,7 @@ def gen_filenotfound_resp(lab_id, stud_path, corr_file, grader, att=None, next_d
         con.commit()
 
 
-def get_resp_and_grade(grade_id, db_name='./grades.sqlite3'):
+def get_resp_and_grade(grade_id, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute("SELECT grade, grader_comment, extra_comment, graded FROM grades WHERE id=?", (grade_id,))
@@ -457,7 +457,7 @@ def get_resp_and_grade(grade_id, db_name='./grades.sqlite3'):
     return grade, resp, uresp, graded
 
 
-def get_prev_resp(grade_id, class_id, lab_id, db_name='./grades.sqlite3'):
+def get_prev_resp(grade_id, class_id, lab_id, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute("SELECT grader_comment, extra_comment FROM grades WHERE class_id=? AND lab=? AND id<?", (class_id, lab_id, grade_id))
@@ -469,7 +469,7 @@ def get_prev_resp(grade_id, class_id, lab_id, db_name='./grades.sqlite3'):
         return '\n'.join(('{} :\n{}'.format(gresp[i], uresp[i]) for i in range(len(gresp))))
 
 
-def save_a_grade_to_db(grade_id, grade, grader_comment, extra_comment, grader_name, graded=True, pass_fail=True, db_name='./grades.sqlite3'):
+def save_a_grade_to_db(grade_id, grade, grader_comment, extra_comment, grader_name, graded=True, pass_fail=True, db_name='./work/grades.sqlite3'):
     pass
 
 
@@ -487,7 +487,7 @@ def save_a_grade_to_db(grade_id, grade, grader_comment, extra_comment, grader_na
 #     return lab_id, lab_type, lab_num
 
 
-def init_new_lab(stud_id, lab_name, att, submitted, lab_path, db_name='./grades.sqlite3'):
+def init_new_lab(stud_id, lab_name, att, submitted, lab_path, db_name='./work/grades.sqlite3'):
     if not os.path.isfile(db_name):
         raise Exception("DB not found")
     with lite.connect(db_name) as con:
@@ -496,7 +496,7 @@ def init_new_lab(stud_id, lab_name, att, submitted, lab_path, db_name='./grades.
         con.commit()
 
 
-def get_lab_names(db_name='./grades.sqlite3'):
+def get_lab_names(db_name='./work/grades.sqlite3'):
     """
 
     :param db_name:
@@ -541,7 +541,7 @@ def update_lab_submissions_paths(db_name, repository_root, year, semester):
         con.commit()
 
 
-def get_empty_grades_by_lid(lab_id, att, db_name='./grades.sqlite3'):
+def get_empty_grades_by_lid(lab_id, att, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute("SELECT submitted, class_id, id, lab_path FROM grades WHERE lab=? AND attempt=? AND graded is NULL", (lab_id, att))
@@ -554,7 +554,7 @@ def get_empty_grades_by_lid(lab_id, att, db_name='./grades.sqlite3'):
     return subm, class_id, lab_id, lab_path
 
 
-def get_all_grades_by_lid(lab_id, att, db_name='./grades.sqlite3'):
+def get_all_grades_by_lid(lab_id, att, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute("SELECT submitted, class_id, id, lab_path FROM grades WHERE lab=? AND attempt=? ", (lab_id, att))
@@ -567,7 +567,7 @@ def get_all_grades_by_lid(lab_id, att, db_name='./grades.sqlite3'):
     return subm, class_id, lab_id, lab_path
 
 
-def reconstruct_grades_and_comments(db_name='./grades.sqlite3'):
+def reconstruct_grades_and_comments(db_name='./work/grades.sqlite3'):
     lab_id, lab_path = get_empty_grades(db_name)
     updated_grades = list()
     for l_iter in range(len(lab_path)):
@@ -631,7 +631,7 @@ def generate_final_grades(db_name, year, semester):
     # a = id_list[list(ids.values()).index(class_id)]
 
 
-def get_max_grade_for_lab(lid, year, semester, db_name='./grades.sqlite3'):
+def get_max_grade_for_lab(lid, year, semester, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute('SELECT e.pipeline_id as pipid, IFNULL(MAX(k.final_grade), 0) as grade '
@@ -649,7 +649,7 @@ def get_max_grade_for_lab(lid, year, semester, db_name='./grades.sqlite3'):
         return result.fetchall()
 
 
-def get_grades_by_lab_and_att(lid, att, db_name='./grades.sqlite3'):
+def get_grades_by_lab_and_att(lid, att, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name, detect_types=lite.PARSE_COLNAMES) as con:
         cur = con.cursor()
         result = cur.execute('select a.due_date_{0} as due_date, a.imported_{0} as import_date, '
@@ -668,7 +668,7 @@ def get_grades_by_lab_and_att(lid, att, db_name='./grades.sqlite3'):
     return info_tup, info_desc
 
 
-def get_lab_filename(lab_id, db_name='./grades.sqlite3'):
+def get_lab_filename(lab_id, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
 
@@ -677,7 +677,7 @@ def get_lab_filename(lab_id, db_name='./grades.sqlite3'):
     return None
 
 
-def get_lab_max_value(lab_id, db_name='./grades.sqlite3'):
+def get_lab_max_value(lab_id, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
 
@@ -754,7 +754,7 @@ def export_pdf(self=None):
             # print(error)
 
 
-def save_grade_and_report(grade_id, grade, report, user_comment, grader, db_name='./grades.sqlite3'):
+def save_grade_and_report(grade_id, grade, report, user_comment, grader, db_name='./work/grades.sqlite3'):
     if not os.path.isfile(db_name):
         raise Exception("DB not found")
     with lite.connect(db_name) as con:
@@ -763,7 +763,7 @@ def save_grade_and_report(grade_id, grade, report, user_comment, grader, db_name
         con.commit()
 
 
-def commit_gen_report(grade_id, db_name='./grades.sqlite3'):
+def commit_gen_report(grade_id, db_name='./work/grades.sqlite3'):
     if not os.path.isfile(db_name):
         raise Exception("DB not found")
     with lite.connect(db_name) as con:
@@ -781,7 +781,7 @@ def get_lab_id(ltype, lab_num):
     return None
 
 
-def register_lab_in_semester(ltype, lab_num, year, semester, due_dates, db_name='./grades.sqlite3'):
+def register_lab_in_semester(ltype, lab_num, year, semester, due_dates, db_name='./work/grades.sqlite3'):
     lid = get_lab_id(ltype, int(lab_num))
     # TODO: add a check so you do not insert lab twice
     if lid is None:
@@ -793,7 +793,7 @@ def register_lab_in_semester(ltype, lab_num, year, semester, due_dates, db_name=
         cur.execute('INSERT OR REPLACE INTO lab_schedule (lab_id, year, semester, due_date_1, due_date_2, due_date_3, due_date_4) VALUES (?, ?, ?, ?, ?, ?, ?)', (lid, year, semester, due_dates[0], due_dates[1], due_dates[2], due_dates[3]))
         con.commit()
 
-def get_labid_in_schedule(lid, year, semester, db_name='./grades.sqlite3'):
+def get_labid_in_schedule(lid, year, semester, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         result = cur.execute('SELECT id FROM lab_schedule WHERE lab_id=? AND year=? AND semester=?', (lid, year, semester))
@@ -801,7 +801,7 @@ def get_labid_in_schedule(lid, year, semester, db_name='./grades.sqlite3'):
     return int(fetched_red[0]) if fetched_red is not None else None
 
 
-def get_due_date_by_labid(lid_sem, att=None, db_name='./grades.sqlite3'):
+def get_due_date_by_labid(lid_sem, att=None, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         if att:
@@ -812,7 +812,7 @@ def get_due_date_by_labid(lid_sem, att=None, db_name='./grades.sqlite3'):
     return None
 
 
-def get_import_dates_by_labid(lid_sem, att=None, db_name='./grades.sqlite3'):
+def get_import_dates_by_labid(lid_sem, att=None, db_name='./work/grades.sqlite3'):
     with lite.connect(db_name) as con:
         cur = con.cursor()
         if att:
@@ -824,7 +824,7 @@ def get_import_dates_by_labid(lid_sem, att=None, db_name='./grades.sqlite3'):
 
 
 # save_grade_and_report(self.grade_ids[self.cur_idx], self.final_grade, self.user_comment, self.grader)
-def gen_report(lid_sem, att=None, db_name='./grades.sqlite3'):
+def gen_report(lid_sem, att=None, db_name='./work/grades.sqlite3'):
     if not os.path.isfile(db_name):
         raise Exception("DB not found")
     with lite.connect(db_name) as con:
@@ -833,7 +833,7 @@ def gen_report(lid_sem, att=None, db_name='./grades.sqlite3'):
         con.commit()
 
 
-def get_pipids_in_class_by_year_semester(year, semester, db_name='./grades.sqlite3'):
+def get_pipids_in_class_by_year_semester(year, semester, db_name='./work/grades.sqlite3'):
     if not os.path.isfile(db_name):
         raise Exception("DB not found")
     with lite.connect(db_name) as con:

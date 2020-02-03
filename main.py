@@ -320,7 +320,7 @@ class Grader:
                 self.what_to_grade = ["R_LD", "R_BUS", "S_LD", "ACC_CLR", "ACC_LD", "ACC_BUS", "ALU_SEL"]
             elif self.lab_num == 11:
                 self.what_to_grade = ["Z_LD", "OUTR_LD", "RAM_RW", "RAM_EN", "IR_LD", "SC_CLR"]
-            circ = CircFile('/home/vanya/Documents/3130_labs/2018_2/PLDs.circ')
+            circ = CircFile('./work/PLDs.circ')
             self.all_my_circuits = circ.get_parsed_pins2(self.what_to_grade)
 
         if self.lab_paths is not None and len(self.lab_paths) > 0:
@@ -1411,9 +1411,9 @@ class Ui_Create_settings_dialog(Ui_Settings):
         Additionally enables Apply and Reset buttons
         :return:
         """
-        self.input_logisim_path.setText("~/Downloads/")
-        self.input_local_stor.setText("~/Documents/3130_labs/")
-        self.input_grades_db.setText("~/Documents/3130_labs/grades.sqlite3")
+        self.input_logisim_path.setText("./")
+        self.input_local_stor.setText("./work/local")
+        self.input_grades_db.setText("./work/grades.sqlite3")
         self.input_rem_stor.setText("")  # impossible to predict
         self.groupBox_user.setEnabled(True)
         self.buttonBox.button(self.buttonBox.Reset).setEnabled(True)
