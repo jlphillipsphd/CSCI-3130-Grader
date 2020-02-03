@@ -56,7 +56,7 @@ QProgressBar::chunk
 """
 
 
-def read_settings(db_name = 'settings.sqlite3' ):
+def read_settings(db_name = './work/settings.sqlite3' ):
     """
     Queries settings db and sets paths
     :return: path to logisim, path to current semester labs
